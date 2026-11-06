@@ -14,6 +14,9 @@ Zaimplementowane: spool, most do dyspozytora, podpięcie zdarzeń, fold sesji do
 Niezweryfikowane: tryby interaktywne, subagenci na żywo, skuteczność uwag straży pętli.
 Komenda `/te` (CLI rdzenia: `status`, `microskills`, `toolprune`, `config`, `doctor`, …) działa przez executor DSH. Brak jeszcze: wywołań pomocniczych modelu (`ctx.llm`), przycinania narzędzi (rdzeń: niedostępne na `dsh`), części wizualnej (faza G).
 
+## Panel w prawym pasku (web/desktop)
+Karta „TokenEconomizer” w prawym pasku DSH pokazuje tryby mechanizmów, sumy z księgi (sesje, efektywne tokeny, narzut) i ostrzeżenia; dane pochodzą z `/te status --json`, host niczego nie liczy sam. Panel czyta stan przy otwarciu, zmianie sesji i po „Refresh”, nigdy cyklicznie, bo każde wykonanie zostawia w czacie wiersz `te · {…}`. Klient to zwykłe moduły CommonJS (`client/src/`), opakowane w kopertę DSH przez `node client/build.mjs` (→ `client.js`, poza gitem; dystrybucję składa `scripts/build_dsh_plugin.py`). Decyzje: [ADR 0003](../../docs/dsh/adr/0003-czesc-wizualna.md). Test w prawdziwej przeglądarce (Chrome + `dsh web` + jedno krótkie wywołanie modelu): `node client/test/browser/browser-check.mjs --env-file <.env z kluczem> --patch <nakładka z modelem>`. W TUI i headless zostaje tekst z `/te`.
+
 ## Wymagania i zmienne
 Python >= 3.10 w PATH (lub `TE_PYTHON`). `TE_DISABLE=1` wyłącza plugin. Stan: `~/.tokeneconomizer`
 (`TOKENECONOMIZER_HOME`). Testy: `npm test` w tym katalogu (Node >= 22). Test na żywym DSH: `node test/live/live-check.mjs [--profile headless]` (dwa krótkie wywołania modelu).

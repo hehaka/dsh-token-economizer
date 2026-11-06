@@ -6,20 +6,35 @@
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.mjs",
+  "exports": {
+    ".": "./index.mjs",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
   "dsh": {
     "bundle": {
       "patch": "cordis.patch.yml"
     },
     "engines": {
       "dsh": ">=0.2.0-rc.2"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
     }
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs client/test/*.test.mjs",
+    "build:client": "node client/build.mjs"
   },
   "files": [
     "index.mjs",
     "src/",
+    "client.js",
     "cordis.patch.yml",
     "scripts/",
     "lib/",

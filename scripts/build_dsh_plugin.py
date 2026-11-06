@@ -7,13 +7,14 @@
 (`#path:/plugin/dsh`) gets only that subdirectory (docs/dsh/spike-phase-b.md, B5), and the plugin
 needs the Python core. This copies the plugin, the core's launcher (`plugin/scripts/`, whose
 `te_bootstrap.py` the plugin starts for every hook) and the core package (`tokeneconomizer/`,
-into `lib/` where the launcher looks first) into one flat package root. CI publishes that root
+into `lib/` where the launcher looks first) into one flat package root, with the browser half built to `client.js`. CI publishes that root
 as the `dist` branch (docs/dsh/adr/0002). The core is stdlib-only, so the copy is the whole
 dependency story. Nothing under the upstream paths is edited; this file only reads them.
 """
 import argparse
 import os
 import shutil
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -26,7 +27,12 @@ def build(out):
     out = os.path.abspath(out)
     if os.path.exists(out):
         shutil.rmtree(out)
-    shutil.copytree(PLUGIN, out, ignore=shutil.ignore_patterns("__pycache__", "node_modules", "test"))
+    # The browser half (ADR 0003): plain CommonJS wrapped in DSH's module envelope; node is needed
+    # for this one step, as it is for the plugin itself.
+    subprocess.run(["node", os.path.join(PLUGIN, "client", "build.mjs")], check=True,
+                   stdout=subprocess.DEVNULL)
+    shutil.copytree(PLUGIN, out,
+                    ignore=shutil.ignore_patterns("__pycache__", "node_modules", "test", "client"))
     shutil.copytree(os.path.join(REPO, "plugin", "scripts"), os.path.join(out, "scripts"),
                     ignore=IGNORE)
     shutil.copytree(os.path.join(REPO, "tokeneconomizer"),

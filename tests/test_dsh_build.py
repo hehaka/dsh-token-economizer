@@ -18,9 +18,11 @@ def test_the_bundle_is_a_flat_package_root_with_the_core_inside(tmp_path):
     pkg = json.load(open(os.path.join(out, "package.json"), encoding="utf-8"))
     assert pkg["name"] == "dsh-token-economizer" and pkg["main"] == "index.mjs"
     for rel in ("index.mjs", "src/plugin.mjs", "cordis.patch.yml", "scripts/te_bootstrap.py",
-                "lib/tokeneconomizer/plugin/host_dsh.py", "LICENSE"):
+                "lib/tokeneconomizer/plugin/host_dsh.py", "LICENSE", "client.js"):
         assert os.path.isfile(os.path.join(out, rel)), rel
     assert not os.path.exists(os.path.join(out, "test"))
+    assert not os.path.exists(os.path.join(out, "client"))       # sources stay out; only client.js ships
+    assert pkg["exports"]["./client"] == "./client.js" and pkg["dsh"]["client"]["platform"] == "web"
     for name in pkg["dsh"].get("bundle", {}).values():
         assert os.path.isfile(os.path.join(out, name)), name
 

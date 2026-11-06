@@ -77,7 +77,17 @@ Skrypt: `plugin/dsh/test/live/live-check.mjs` (uruchamia `dsh headless` z nakła
 - Rejestracja przez `ctx.inject(['commands'], …)`, nie przez `inject` pluginu: tablicowy `inject` oznacza usługę wymaganą, więc profil bez `commands` wstrzymałby cały plugin razem z hookami.
 - `dsh headless` **nie wykonuje komend slash** (linia `/te …` poszła do modelu jako zwykły prompt), więc komendę sprawdza plugin diagnostyczny `test/live/command_diag.mjs`, który wywołuje `CommandRegistry.execute(agent, linia, …)`, czyli ścieżkę używaną przez interfejs. Potwierdzone: `te` jest na liście komend agenta, `/te status --json` zwraca status repozytorium z `host: "dsh"`, `/te fold …` jest odrzucone.
 - `/te` przekazuje argumenty do CLI rdzenia (`te_bootstrap.py cli --host dsh`) bez powłoki. Dozwolone: `status`, `microskills`/`facts`, `toolprune`/`untool`, `config`, `doctor`, `history`, `repos`, `repomap`. Poza listą: `fold`, `judge` (zadania w tle) i `probe` (wywołania modelu, których wtyczka DSH jeszcze nie ma).
-- **Nie sprawdzone:** jak UI webowe/TUI wyświetla wynik (tekst w czacie); wywołanie komendy z prawdziwego okna czatu.
+- Wywołanie z prawdziwego okna czatu (przeglądarka, 2026-11-06): `/te status` wpisane w pole wiadomości wykonuje się i zostawia w czacie wiersz `te · { … }` (wynik jako tekst, ucięty do jednej linii). **Nie sprawdzone:** TUI.
+- Komenda wpisana w *szkicu* (przed pierwszą wiadomością) nie utworzyła sesji; w sesji działa.
+
+### Panel w prawym pasku (faza G, 2026-11-06)
+Decyzje: [ADR 0003](adr/0003-czesc-wizualna.md). Sprawdzone w **prawdziwej przeglądarce** (Chrome headless przez CDP) na prawdziwym `dsh web` z izolowanym `DSH_HOME` i stanem TE oraz modelem `claude-haiku-5-5` (jedno krótkie wywołanie): `node plugin/dsh/client/test/browser/browser-check.mjs --env-file <.env z kluczem> --patch <nakładka z modelem>` → 10/10.
+- Host rozpoznaje `dsh.client` z `package.json` i serwuje `client.js` w adresie zbiorczym; w pasku pojawia się karta „TokenEconomizer” z opisem; kliknięcie otwiera zakładkę.
+- **Błąd wyłapany tylko w przeglądarce:** pierwsza wersja brała sesję z `ctx.sidebarRight.onScreen`, które w tym widoku jest puste (panel pisał „Open a session first” przy otwartej sesji); testy jednostkowe z atrapą przechodziły. Poprawnie: slot `sidebar.right.pane.tab` ma zakres sesji, więc `register({ …, inject: (sessionId) => ({ sessionId }) }, Panel)` dostarcza sesję jako właściwość komponentu (ten sam wzorzec ma wbudowany panel planu).
+- Dane: panel uruchamia `/te status --json` przez `ctx.remote.commands.execute` — tę samą ścieżką co czat. **Skutek uboczny (potwierdzony):** każde otwarcie i „Refresh” zostawia w czacie wiersz `te · { … }`; dlatego panel czyta stan tylko przy otwarciu, przy zmianie sesji i na żądanie, nigdy cyklicznie.
+- Liczby: po złożeniu sesji prawdziwym przebiegiem hooków (`seed_session.py`) panel po „Refresh” pokazuje Sessions 1, Effective tokens 53.9k, Plugin overhead 0 — te same wartości co `te status`.
+- Okna pierwszego uruchomienia (`Preview Notice`, `Get started`) w świeżym `DSH_HOME` trzeba zamknąć; skrypt to robi.
+- **Nie sprawdzone:** Firefox/Safari; aplikacja desktopowa; zachowanie przy wielu sesjach otwartych naraz; układ na wąskim ekranie/mobilnie; motyw jasny. Brak szeregów czasowych i wykresów (G3 tylko sumy z księgi).
 
 ### Przycinanie narzędzi (wniosek dla fazy F)
 Rdzeń zgłasza `tool pruning is not available on dsh`: dostępność to `denylist.supports(host)`, czyli host z plikiem ustawień (Claude Code, Codex, Copilot). Na DSH przycinanie wymaga osobnej ścieżki zastosowania po stronie pluginu (`ctx.tools.restrict`), z propozycją liczoną przez rdzeń. Test `test_tool_pruning_is_not_applied_on_dsh_yet` przypina obecne zachowanie.
