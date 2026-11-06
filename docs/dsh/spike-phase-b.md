@@ -51,7 +51,7 @@ Wnioski wiążące dla implementacji:
 
 ## Weryfikacja na żywym DSH (2026-11-06)
 
-Skrypt: `plugin/dsh/test/live/live-check.mjs` (uruchamia `dsh headless` z nakładką `--patch`, więc profil użytkownika nie jest zmieniany; stan rdzenia trafia do katalogu tymczasowego; wymaga `dsh` w PATH i pliku `.env` profilu z kluczem modelu, który wczytuje bez wypisywania). Dwa krótkie przebiegi (`claude-haiku-5-5`), wynik **13/13**.
+Skrypt: `plugin/dsh/test/live/live-check.mjs` (uruchamia `dsh headless` z nakładką `--patch`, więc profil użytkownika nie jest zmieniany; stan rdzenia trafia do katalogu tymczasowego; wymaga `dsh` w PATH i pliku `.env` profilu z kluczem modelu, który wczytuje bez wypisywania). Trzy krótkie przebiegi (`claude-haiku-5-5`), wynik **18/18**.
 
 **Potwierdzone na żywo (headless, DSH 0.2.1-rc.5):**
 - Plugin ładuje się jako wpis `--patch`; kształty zdarzeń zgadzają się z założeniami: `SessionStart`, jeden `UserPromptSubmit` (`prompt_id` p1, tekst użytkownika), `PostToolUse` dla `bash` z argumentami jako obiektem i wynikiem w `tool_response`, `Stop`, `SessionEnd`.
@@ -72,4 +72,13 @@ Skrypt: `plugin/dsh/test/live/live-check.mjs` (uruchamia `dsh headless` z nakła
 - `ctx.llm` (wywołania pomocnicze), komendy `/te`, przycinanie narzędzi;
 - import `createUserMessage` z `@deepseek-ai/dsh-llm` z zainstalowanego pakietu (w teście z katalogu tymczasowego zadziałał zapasowy, ręcznie zbudowany obiekt wiadomości i DSH go przyjął);
 - współistnienie z `dsh-hooks-claude-code` w tym samym profilu.
+
+### Komenda `/te` (2026-11-06)
+- Rejestracja przez `ctx.inject(['commands'], …)`, nie przez `inject` pluginu: tablicowy `inject` oznacza usługę wymaganą, więc profil bez `commands` wstrzymałby cały plugin razem z hookami.
+- `dsh headless` **nie wykonuje komend slash** (linia `/te …` poszła do modelu jako zwykły prompt), więc komendę sprawdza plugin diagnostyczny `test/live/command_diag.mjs`, który wywołuje `CommandRegistry.execute(agent, linia, …)`, czyli ścieżkę używaną przez interfejs. Potwierdzone: `te` jest na liście komend agenta, `/te status --json` zwraca status repozytorium z `host: "dsh"`, `/te fold …` jest odrzucone.
+- `/te` przekazuje argumenty do CLI rdzenia (`te_bootstrap.py cli --host dsh`) bez powłoki. Dozwolone: `status`, `microskills`/`facts`, `toolprune`/`untool`, `config`, `doctor`, `history`, `repos`, `repomap`. Poza listą: `fold`, `judge` (zadania w tle) i `probe` (wywołania modelu, których wtyczka DSH jeszcze nie ma).
+- **Nie sprawdzone:** jak UI webowe/TUI wyświetla wynik (tekst w czacie); wywołanie komendy z prawdziwego okna czatu.
+
+### Przycinanie narzędzi (wniosek dla fazy F)
+Rdzeń zgłasza `tool pruning is not available on dsh`: dostępność to `denylist.supports(host)`, czyli host z plikiem ustawień (Claude Code, Codex, Copilot). Na DSH przycinanie wymaga osobnej ścieżki zastosowania po stronie pluginu (`ctx.tools.restrict`), z propozycją liczoną przez rdzeń. Test `test_tool_pruning_is_not_applied_on_dsh_yet` przypina obecne zachowanie.
 

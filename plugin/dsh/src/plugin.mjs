@@ -15,6 +15,7 @@ import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { disabled, findBootstrap, runHook } from './bridge.mjs';
+import { runTe } from './command.mjs';
 import { Spool, parseArgs, spoolPath, textOf } from './spool.mjs';
 
 export const NAME = 'token-economizer';
@@ -67,9 +68,9 @@ export function createPlugin(ctx, options) {
     return null;
   }
   const stateRoot = config.stateRoot ?? env.TOKENECONOMIZER_HOME ?? join(homedir(), '.tokeneconomizer');
+  const bootstrap = config.bootstrap ?? findBootstrap(import.meta.url);
   let run = config.run;
   if (!run) {
-    const bootstrap = config.bootstrap ?? findBootstrap(import.meta.url);
     if (!bootstrap) log('warn', 'the TokenEconomizer launcher (scripts/te_bootstrap.py) was not found: no hook will run');
     run = (payload, cwd) => runHook(payload, { env, bootstrap, cwd });
   }
@@ -226,6 +227,30 @@ export function createPlugin(ctx, options) {
       /* ignore */
     }
   });
+
+  // `/te ...`: the core's command line, answered in the chat without a model call. Registered when
+  // the `commands` service exists (`ctx.inject`), so a profile without it still gets the hooks; a
+  // plain `inject: ['commands']` on the plugin would hold the whole plugin back instead.
+  const registerCommand = (c) =>
+    c.commands.register({
+      name: 'te',
+      description: 'TokenEconomizer: status, learned facts, tool pruning, settings',
+      input: { hint: '[status | microskills | toolprune | config | doctor] [arguments]' },
+      handler: async (invocation) => {
+        try {
+          const exec = config.runCommand ?? runTe;
+          return await exec(invocation.rawInput, { env, bootstrap, cwd: invocation.agent?.session?.header?.cwd, signal: invocation.signal });
+        } catch (err) {
+          return { kind: 'error', text: `te failed: ${err?.message ?? err}` };
+        }
+      },
+    });
+  try {
+    if (typeof ctx.inject === 'function') ctx.inject(['commands'], registerCommand);
+    else if (ctx.commands?.register) registerCommand(ctx);
+  } catch (err) {
+    log('warn', `/te not registered: ${err?.message ?? err}`);
+  }
 
   // `dsh headless` ends the process without a `session/disposed` (checked live, docs/dsh/
   // spike-phase-b.md), so sessions still open when the event loop drains are closed here: the

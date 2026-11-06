@@ -72,3 +72,8 @@ Wyniki: [spike-phase-b.md](../spike-phase-b.md).
 - **Format Pi potwierdzony** na prawdziwej sesji; z ADR 0001 §5 obowiązuje bez zmian (z zastrzeżeniem o pomijaniu wstrzykniętego kontekstu).
 - **Do `adapter.py` dochodzi zbiór narzędzi chronionych dla `dsh`** (patrz notatka ze spike'u); mieści się w budżecie.
 
+## Aktualizacja: komenda `/te` i część wizualna (2026-11-06)
+
+- **`/te`** jest cienką nakładką na CLI rdzenia (`status --json` itd.), więc zakres i teksty komend należą do upstreamu. Wynik live: zob. [spike-phase-b.md](../spike-phase-b.md).
+- **Część wizualna (faza G, decyzja: później).** DSH pozwala pluginowi mieć połówkę kliencką: `dsh.client` w `package.json` (`platform: "web"`, lista wstrzykiwanych usług klienta) i eksport `./client` z paczką przeglądarkową; wzorcem jest `dsh-context` (host `lib/index.js` + klient React `lib/client.js`, panel w prawym pasku, strona w lewym, `/context`, karta ustawień). Warunki: krok budowania (React/TS; plugin jest dziś czystym ESM), wszystko w nowym katalogu `plugin/dsh/client/` i w CI budującym gałąź `dist` (bez edycji plików upstreamu), zgodność z konkretnymi wydaniami rc DSH, UI tylko w web/desktop (w TUI i headless zostaje tekst z `/te`). Kontraktem danych dla UI będzie `te status --json`. Do sprawdzenia w spike'u: kanał host→klient (prawdopodobnie `dsh-api-remotes`; nie czytany) oraz sam krok budowania.
+

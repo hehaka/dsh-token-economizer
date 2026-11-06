@@ -129,6 +129,24 @@ const ledgers = existsSync(state2) ? spawnSync('find', [state2, '-name', 'ledger
 const rec = ledgers.flatMap(jsonl).find((x) => x.kind === 'session');
 check('a ledger record for the DSH session', Boolean(rec) && /dsh/.test(ledgers[0]), rec ? `requests ${rec.requests}, model ${rec.model}, priced_by ${rec.priced_by}` : 'none');
 
+// -- 4. /te through DSH's command executor -------------------------------------------------------
+const diagFile = join(work, 'command_diag.mjs');
+writeFileSync(diagFile, readFileSync(join(HERE, 'command_diag.mjs')));
+const patch3 = join(work, 'cmd.patch.yml');
+writeFileSync(patch3, `- insert:\n    - id: te-cmd-diag\n      name: ${JSON.stringify(pathToFileURL(diagFile).href)}\n    - id: te-live\n      name: ${JSON.stringify(entry)}\n`);
+const diagLog = join(work, 'cmd.log');
+const r3 = dsh(['--profile', profile, '--patch', patch3, 'Reply with the single word ok'], { ...env(join(work, 'state3')), TE_DIAG_LOG: diagLog }, 240_000);
+check('the third headless run finished', r3.status === 0, `exit ${r3.status}`);
+const lines = existsSync(diagLog) ? readFileSync(diagLog, 'utf8').split('\n').filter(Boolean) : [];
+const names = lines.find((l) => l.startsWith('commands for agent:')) ?? '';
+check('/te is among the agent\'s commands', /(^|[:,])te(,|$)/.test(names.replace('commands for agent: ', 'x:')), names);
+const ran = Object.fromEntries(lines.filter((l) => l.startsWith('{')).map((l) => JSON.parse(l)).map((x) => [x.line, x]));
+let status;
+try { status = JSON.parse(ran['/te status --json']?.text ?? ''); } catch { status = undefined; }
+check('/te status --json answers for the session\'s repository (host dsh)', ran['/te status --json']?.kind === 'success' && status?.host === 'dsh' && status?.repo === 'acme/widget');
+check('/te toolprune show says it is not available on dsh', ran['/te toolprune show']?.kind === 'error' && /not available on dsh/.test(ran['/te toolprune show']?.text ?? ''), (ran['/te toolprune show']?.text ?? '').slice(0, 80));
+check('/te refuses the core\'s background commands', ran['/te fold --session x']?.kind === 'error' && /Unknown command/.test(ran['/te fold --session x']?.text ?? ''));
+
 const failed = checks.filter((c) => !c.ok).length;
 console.log(`\n${checks.length - failed}/${checks.length} passed. Work directory: ${work}`);
 process.exit(failed ? 1 : 0);
