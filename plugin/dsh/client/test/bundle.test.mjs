@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import vm from 'node:vm';
 import { buildClient } from '../build.mjs';
 import { fakeReact } from './fake-react.mjs';
-import { STATUS } from './fixtures.mjs';
+import { PANEL } from './fixtures.mjs';
 
 /** Run the built bundle the way the browser shell does: register a factory, then materialize it. */
 function load(requireImpl) {
@@ -37,7 +37,7 @@ function fakeCtx(opts = {}) {
     registered,
     sidebarRightTabs: { register: (d) => (registered.tabs.push(d), () => {}) },
     slots: { inject: (name, factory) => registered.slots.push({ name, factory }), register: (spec, comp) => ({ spec, comp, propsFor: (sid) => spec.inject?.(sid) }) },
-    remote: { commands: { execute: execute ?? (async () => ({ ok: true, value: { result: { kind: 'success', text: JSON.stringify(STATUS) } } })) } },
+    remote: { commands: { execute: execute ?? (async () => ({ ok: true, value: { result: { kind: 'success', text: JSON.stringify(PANEL) } } })) } },
     effect(fn, label) { registered.effects.push(label); fn(); },
   };
 }
@@ -61,18 +61,18 @@ test('apply registers the page type and the tab body', async () => {
   assert.equal(typeof comp, 'function');
 });
 
-test('the panel runs /te status --json in the session the slot gave it', async () => {
+test('the panel runs /te panel --json in the session the slot gave it', async () => {
   const fake = fakeReact();
   const { exports } = load(() => fake.react);
   const calls = [];
-  const ctx = fakeCtx({ execute: async (...a) => (calls.push(a), { ok: true, value: { result: { kind: 'success', text: JSON.stringify(STATUS) } } }) });
+  const ctx = fakeCtx({ execute: async (...a) => (calls.push(a), { ok: true, value: { result: { kind: 'success', text: JSON.stringify(PANEL) } } }) });
   exports.apply(ctx);
   const { comp, spec } = ctx.registered.slots[0].factory();
   const props = spec.inject('sess-1');
   fake.render(comp, props);
   fake.flushEffects();
   await new Promise((r) => setImmediate(r));
-  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [['sess-1', '/te status --json', []]]);   // JSON: arrays built in the vm realm
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [['sess-1', '/te panel --json', []]]);   // JSON: arrays built in the vm realm
   assert.equal(fake.render(comp, props).props.view.state, 'ready');
 });
 

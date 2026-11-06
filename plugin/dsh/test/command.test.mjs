@@ -33,6 +33,18 @@ test('/te runs the core\'s command line for the session\'s repository', async ()
   assert.match(status.state, /[\\/]dsh$/);
 });
 
+test('/te panel --json is the one document a visual panel reads: status plus the session series', async () => {
+  const { opts } = ctxFor(tmp());
+  const r = await runTe('panel --json', opts);
+  assert.equal(r.kind, 'success', r.text);
+  const doc = JSON.parse(r.text);
+  assert.equal(doc.schema, 1);
+  assert.equal(doc.status.host, 'dsh');
+  assert.deepEqual(doc.series.sessions, []);
+  assert.equal(r.text.split('\n').filter(Boolean).length, 1, 'one line: a command row in the chat stays short');
+  assert.match((await runTe('panel', opts)).text, /nothing folded yet/);
+});
+
 test('unknown commands, bad quoting, help and the core\'s own errors answer as errors or usage', async () => {
   const { opts } = ctxFor(tmp());
   assert.deepEqual(await runTe('help', opts), { kind: 'success', text: USAGE });

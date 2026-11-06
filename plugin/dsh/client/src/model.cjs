@@ -19,16 +19,20 @@ function fmtPct(f) {
   return typeof f === 'number' && Number.isFinite(f) ? `${(f * 100).toFixed(1)}%` : '—';
 }
 
-/** The text a `/te` command answered with -> {ok, status} or {ok: false, error}. */
-function parseStatus(text) {
+/**
+ * The text `te panel --json` answered with -> {ok, status, series}. A bare `te status --json` document
+ * is accepted too (no series), so a core older than the panel command still draws the overview.
+ */
+function parsePanel(text) {
   let v;
   try {
     v = JSON.parse(text);
   } catch {
     return { ok: false, error: String(text ?? '').trim().slice(0, 400) || 'empty answer' };
   }
-  if (!isObject(v) || !isObject(v.ledger) || !isObject(v.config)) return { ok: false, error: 'unexpected status shape' };
-  return { ok: true, status: v };
+  const status = isObject(v) && isObject(v.status) ? v.status : v;
+  if (!isObject(status) || !isObject(status.ledger) || !isObject(status.config)) return { ok: false, error: 'unexpected status shape' };
+  return { ok: true, status, series: isObject(v?.series) ? v.series : null };
 }
 
 const MODE_LABEL = { off: 'off', on: 'on', auto: 'automatic', propose: 'proposals only', nudge: 'nudges', shadow: 'shadow (observe only)' };
@@ -40,8 +44,8 @@ function toViewState(exec) {
   const result = exec.value?.result;
   if (!result) return { state: 'error', message: 'The /te command is not available (is the plugin loaded?).' };
   if (result.kind !== 'success') return { state: 'error', message: String(result.text ?? 'te failed').slice(0, 400) };
-  const parsed = parseStatus(result.text);
-  return parsed.ok ? { state: 'ready', model: buildModel(parsed.status) } : { state: 'error', message: parsed.error };
+  const parsed = parsePanel(result.text);
+  return parsed.ok ? { state: 'ready', model: buildModel(parsed.status), series: parsed.series } : { state: 'error', message: parsed.error };
 }
 
 /** Status -> what the view draws. */
@@ -80,4 +84,4 @@ function buildModel(s) {
   };
 }
 
-module.exports = { fmtTokens, fmtPct, parseStatus, toViewState, buildModel, label };
+module.exports = { fmtTokens, fmtPct, parsePanel, toViewState, buildModel, label };

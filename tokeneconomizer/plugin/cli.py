@@ -49,7 +49,7 @@ import sys
 import time
 
 from .. import loopguard
-from . import (accounting, denylist, fold, history, hosts, paths, repomap, repos, sidecall,
+from . import (accounting, denylist, fold, history, hosts, paths, panel, repomap, repos, sidecall,
                toolcheck)
 from .config import canonical, unset_config, write_config
 from .context import LiveContext
@@ -914,6 +914,9 @@ def build_parser():
     p.add_argument("--explain", action="store_true",
                    help="briefly explain current settings and saved state (no model calls)")
     p.set_defaults(fn=cmd_status)
+    p = add("panel")        # the data a visual panel reads: status plus the session series
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(fn=panel.cmd_panel)
     add("microskills", "facts").set_defaults(fn=cmd_microskills)
     p = add("toolprune", "untool")
     p.add_argument("action", nargs="?", default="show",

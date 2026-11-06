@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
-import { STATUS } from './fixtures.mjs';
+import { PANEL, SERIES, STATUS } from './fixtures.mjs';
 
-const { fmtTokens, fmtPct, parseStatus, toViewState, buildModel } = createRequire(import.meta.url)('../src/model.cjs');
+const { fmtTokens, fmtPct, parsePanel, toViewState, buildModel } = createRequire(import.meta.url)('../src/model.cjs');
 
 const ok = (text, kind = 'success') => ({ ok: true, value: { result: { kind, text } } });
 
@@ -19,11 +19,18 @@ test('token counts are short and honest', () => {
 });
 
 test('what the command answered is parsed, and anything else is an error with a reason', () => {
-  assert.equal(parseStatus(JSON.stringify(STATUS)).ok, true);
-  assert.equal(parseStatus('not json').ok, false);
-  assert.match(parseStatus('Unknown command "x".').error, /Unknown command/);
-  assert.equal(parseStatus('{"a":1}').ok, false);
-  assert.equal(parseStatus('').ok, false);
+  const ok = parsePanel(JSON.stringify(PANEL));
+  assert.equal(ok.ok, true);
+  assert.equal(ok.status.repo, 'acme/widget');
+  assert.equal(ok.series.sessions.length, 5);
+  const bare = parsePanel(JSON.stringify(STATUS));                       // a core older than `te panel`
+  assert.equal(bare.ok, true);
+  assert.equal(bare.series, null);
+  assert.equal(parsePanel('not json').ok, false);
+  assert.match(parsePanel('Unknown command "x".').error, /Unknown command/);
+  assert.equal(parsePanel('{"a":1}').ok, false);
+  assert.equal(parsePanel(JSON.stringify({ status: { ledger: {} } })).ok, false);
+  assert.equal(parsePanel('').ok, false);
 });
 
 test('the view model comes straight from the core\'s numbers', () => {
@@ -44,7 +51,9 @@ test('the view model comes straight from the core\'s numbers', () => {
 });
 
 test('every way the command can fail becomes an error state, never a throw', () => {
-  assert.equal(toViewState(ok(JSON.stringify(STATUS))).state, 'ready');
+  assert.equal(toViewState(ok(JSON.stringify(PANEL))).state, 'ready');
+  assert.equal(toViewState(ok(JSON.stringify(PANEL))).series.sessions.length, SERIES.sessions.length);
+  assert.equal(toViewState(ok(JSON.stringify(STATUS))).series, null);
   assert.deepEqual(toViewState(ok('boom', 'error')), { state: 'error', message: 'boom' });
   assert.equal(toViewState(ok('garbage')).state, 'error');
   assert.match(toViewState({ ok: true, value: undefined }).message, /not available/);

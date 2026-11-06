@@ -10,7 +10,7 @@ export const CLI_TIMEOUT_MS = 30_000;
 export const OUTPUT_CAP = 20_000;
 // What a person may run from the chat. `fold` and `judge` are the core's own background jobs;
 // `probe` would make model calls the DSH plugin does not wire yet.
-export const ALLOWED = new Set(['status', 'microskills', 'facts', 'toolprune', 'untool', 'config', 'doctor', 'history', 'repos', 'repomap']);
+export const ALLOWED = new Set(['status', 'panel', 'microskills', 'facts', 'toolprune', 'untool', 'config', 'doctor', 'history', 'repos', 'repomap']);
 export const USAGE = `Usage: /te <command> [arguments]   (default: status)
 Commands: ${[...ALLOWED].filter((c) => !['facts', 'untool'].includes(c)).join(', ')}
 Examples: /te status --json   /te toolprune show   /te config show`;

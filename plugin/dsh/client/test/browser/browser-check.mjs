@@ -108,13 +108,47 @@ try {
     const repoRoot = /"repo_root":\s*"([^"]+)"/.exec(await browser.evaluate('document.body.innerText'))?.[1];
     check('the panel\'s command ran through the host (its output is in the chat)', Boolean(repoRoot), repoRoot ?? 'no repo_root in the page');
     if (repoRoot) {
-      const seed = spawnSync('python3', [join(HERE, 'seed_session.py'), repoRoot, state], { encoding: 'utf8', env: { ...env, PYTHONPATH: ROOT } });
-      check('a finished session was folded into the ledger (real hook lifecycle)', seed.status === 0, seed.status === 0 ? '' : seed.stderr.slice(-300));
+      const N = 6;
+      const seed = spawnSync('python3', [join(HERE, 'seed_session.py'), repoRoot, state, '--sessions', String(N), '--days', '4'], { encoding: 'utf8', env: { ...env, PYTHONPATH: ROOT } });
+      check(`${N} finished sessions on different days were folded into the ledger (real hook lifecycle)`, seed.status === 0, seed.status === 0 ? '' : seed.stderr.slice(-300));
       await browser.evaluate("document.querySelector('[data-te=refresh]').click()");
-      await browser.waitFor("!!document.querySelector('[data-te=stat-Sessions]')", { timeout: 30000, label: 'numbers' });
+      await browser.waitFor("!!document.querySelector('[data-te=stat-Sessions]') && !!document.querySelector('[data-te=history]')", { timeout: 30000, label: 'numbers and history' });
       const text = await browser.evaluate("document.querySelector('[data-te]').parentElement.innerText");
-      check('after Refresh the panel shows the ledger numbers', /Sessions\s*\n?\s*1/.test(text) && /Effective tokens/.test(text) && /Plugin overhead/.test(text), text.replace(/\s+/g, ' ').slice(0, 160));
-      check('the cached-token-heavy usage is priced (non-zero effective tokens)', !/Effective tokens\s*\n?\s*0\b/.test(text));
+      check('after Refresh the panel shows the ledger numbers', new RegExp(`Sessions\\s*\\n?\\s*${N}\\b`).test(text) && /Effective tokens/.test(text) && /Plugin overhead/.test(text), text.replace(/\s+/g, ' ').slice(0, 120));
+      check('the recorded usage is priced (non-zero effective tokens)', !/Effective tokens\s*\n?\s*0\b/.test(text));
+
+      const q = (expr) => browser.evaluate(expr);
+      const bars = await q("(()=>{const c=document.querySelector('[data-te=chart-sessions] svg');return c?+c.getAttribute('data-te-bars'):-1})()");
+      check('History: one bar per session in the per-session chart', bars === N, `bars ${bars}`);
+      const segs = await q("document.querySelectorAll('[data-te=chart-sessions] [data-te-seg]').length");
+      check('History: each bar is stacked from the four recorded parts', segs === N * 4, `segments ${segs}`);
+      const sums = await q(`(()=>{const out=[];document.querySelectorAll('[data-te=chart-sessions] [data-te-bar]').forEach(b=>{let t=0;b.querySelectorAll('[data-te-seg]').forEach(r=>{t+=+r.getAttribute('data-te-value')});out.push(Math.round(t))});return out})()`);
+      const shown = await q("document.querySelector('[data-te=\"stat-Effective tokens\"]')?.innerText ?? ''");
+      const m = /([\d.]+)\s*([kM]?)/.exec(shown.replace('Effective tokens', '').trim());
+      const ledgerTokens = m ? Number(m[1]) * (m[2] === 'M' ? 1e6 : m[2] === 'k' ? 1e3 : 1) : NaN;
+      const barTotal = sums.reduce((a, b) => a + b, 0);
+      check('History: the bars add up to the ledger\'s effective tokens (to the tile\'s rounding)', sums.length === N && Math.abs(barTotal - ledgerTokens) <= Math.max(60, barTotal * 0.0006), `bars ${barTotal}, tile ${shown.replace(/\s+/g, ' ').trim()}`);
+      const pts = await q("(()=>{const c=document.querySelector('[data-te=chart-cache] svg');return c?+c.getAttribute('data-te-points'):-1})()");
+      check('History: the cache hit rate has a point per session', pts === N, `points ${pts}`);
+      const dayBars = await q("(()=>{const c=document.querySelector('[data-te=chart-days] svg');return c?+c.getAttribute('data-te-bars'):-1})()");
+      check('History: the per-day chart has one bar per calendar day', dayBars === 5, `days ${dayBars}`);
+      check('History: no loop-guard chart when the guard never fired', (await q("!!document.querySelector('[data-te=chart-redirects]')")) === false);
+      const geo = await q(`(()=>{const svg=document.querySelector('[data-te=chart-sessions] svg');const box=svg.parentElement.getBoundingClientRect();const w=svg.getBoundingClientRect().width;const bad=[...svg.querySelectorAll('[data-te-seg]')].filter(r=>{const b=r.getBoundingClientRect();return !(b.height>0&&b.width>0)}).length;return {w:Math.round(w),box:Math.round(box.width),bad}})()`);
+      check('History: the chart fills its container width and every segment has size', geo.w > 300 && Math.abs(geo.w - geo.box) <= 2 && geo.bad === 0, `svg ${geo.w}px in ${geo.box}px, ${geo.bad} empty segment(s)`);
+      check('History: the legend names the parts and the page claims no saving', (await q("(()=>{const t=document.querySelector('[data-te=history]').innerText;return /Cache reads/.test(t)&&/Fresh input/.test(t)&&/Recorded values only/.test(t)&&!/\\bsaved\\b|you save/i.test(t)})()")) === true);
+      check('History: a bar carries a tooltip with its session', (await q("/effective tokens/.test(document.querySelector('[data-te=chart-sessions] [data-te-bar] title')?.textContent ?? '')")) === true);
+
+      const rowsBefore = await q("(document.body.innerText.match(/\"schema\":1/g) || []).length");
+      await q("document.querySelector('[data-te=range-10]').click()");
+      await sleep(800);
+      const rowsAfter = await q("(document.body.innerText.match(/\"schema\":1/g) || []).length");
+      check('Switching the range re-draws without running another command', (await q("document.querySelector('[data-te=range-10]').getAttribute('aria-pressed')")) === 'true' && rowsAfter === rowsBefore, `command rows ${rowsBefore} -> ${rowsAfter}`);
+      await q("document.querySelector('[data-te=history]').scrollIntoView()");
+      await sleep(400);
+      await browser.screenshot(join(work, 'history.png'));
+      if (flag('--keep')) console.log(`screenshot: ${join(work, 'history.png')}`);
+      await q("document.querySelector('[data-te=refresh]').click()");
+      await sleep(600);
     }
     await browser.screenshot(join(work, 'panel.png'));
     if (flag('--keep')) console.log(`screenshot: ${join(work, 'panel.png')}`);

@@ -6,9 +6,9 @@ const { createViews } = require('./view.cjs');
 
 const ID = 'dsh-token-economizer';
 const KIND = 'token-economizer';
-const STATUS_LINE = '/te status --json';
+const STATUS_LINE = '/te panel --json';
 
-/** `/te status --json` in the given session. The slot hands the panel its session (see `apply`). */
+/** `/te panel --json` (status plus the session series) in the given session. The slot hands the panel its session (see `apply`). */
 function fetchStatusFor(ctx) {
   return async (sessionId) => {
     if (typeof sessionId !== 'string' || sessionId === '') return { ok: false, error: { message: 'Open a session first: /te runs inside one.' } };

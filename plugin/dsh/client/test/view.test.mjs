@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import { fakeReact, marked, textOf } from './fake-react.mjs';
-import { STATUS } from './fixtures.mjs';
+import { PANEL, STATUS } from './fixtures.mjs';
 
 const require = createRequire(import.meta.url);
 const { createViews } = require('../src/view.cjs');
@@ -51,7 +51,7 @@ test('the panel reads status once when it opens and again only when asked', asyn
   const fake = fakeReact();
   const { createPanel } = createViews(fake.react);
   let calls = 0;
-  const Panel = createPanel(async () => { calls += 1; return { ok: true, value: { result: { kind: 'success', text: JSON.stringify(STATUS) } } }; });
+  const Panel = createPanel(async () => { calls += 1; return { ok: true, value: { result: { kind: 'success', text: JSON.stringify(PANEL) } } }; });
   let tree = fake.render(Panel);
   assert.equal(tree.props.view.state, 'loading');
   fake.flushEffects();
