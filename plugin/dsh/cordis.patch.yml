@@ -1,0 +1,4 @@
+# Warstwa bundla dsh-token-economizer: plugin TokenEconomizer dla DSH (docs/dsh/adr/0002).
+- insert:
+    - id: token-economizer
+      name: dsh-token-economizer

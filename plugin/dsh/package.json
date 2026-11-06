@@ -1,0 +1,29 @@
+{
+  "name": "dsh-token-economizer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TokenEconomizer for DeepSeek Harness: micro-skills, tool pruning and a loop guard, learned from your finished sessions. A thin DSH plugin over the TokenEconomizer core.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "index.mjs",
+  "dsh": {
+    "bundle": {
+      "patch": "cordis.patch.yml"
+    },
+    "engines": {
+      "dsh": ">=0.2.0-rc.2"
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "files": [
+    "index.mjs",
+    "src/",
+    "cordis.patch.yml",
+    "scripts/",
+    "lib/",
+    "README.md",
+    "LICENSE"
+  ]
+}
