@@ -1,0 +1,44 @@
+name: dsh-ci
+
+# CI of the DSH fork (docs/dsh/adr/0002). Upstream's `tests.yml` runs only on pushes to `main`
+# and on pull requests, so a push to `dsh` would run nothing; this file is ours and is not
+# edited upstream, which keeps merges from `upstream/main` conflict-free.
+on:
+  push:
+    branches: [dsh]
+  pull_request:
+    branches: [dsh]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.10", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install pytest
+      - run: python -m pytest tests -rfEs --tb=short
+        env:
+          COLUMNS: "200"
+
+  additive-budget:
+    # How much of upstream's own files the DSH branch edits (new files are free).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - run: |
+          git remote add upstream https://github.com/microsoft/TokenEconomizer.git
+          git fetch --quiet upstream main
+      - run: python scripts/dsh_diff_budget.py --base upstream/main

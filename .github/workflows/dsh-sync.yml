@@ -1,0 +1,71 @@
+name: dsh-sync
+
+# Brings `microsoft/TokenEconomizer:main` into this fork (docs/dsh/adr/0002):
+#   1. `main` is the upstream mirror and only ever fast-forwards;
+#   2. upstream's changes reach `dsh` through a pull request (never a blind merge), so the
+#      tests and the additive budget in dsh-ci.yml decide before anything lands. A conflict
+#      opens an issue instead.
+#
+# SYNC_TOKEN (a fine-grained token with Contents, Pull requests and *Workflows* write on this
+# repository) is needed whenever upstream changed a file under .github/workflows: the default
+# GITHUB_TOKEN may not push those. Without it the job falls back to GITHUB_TOKEN and fails
+# loudly in that case. A pull request opened with GITHUB_TOKEN also does not trigger dsh-ci
+# (GitHub's rule against workflow recursion), so SYNC_TOKEN is what makes the tests run on it.
+# Actions must also be enabled on the fork (GitHub disables them there).
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: dsh-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: dsh
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+      - name: Fetch upstream
+        run: |
+          git config user.name "dsh-sync"
+          git config user.email "dsh-sync@users.noreply.github.com"
+          git remote add upstream https://github.com/microsoft/TokenEconomizer.git
+          git fetch --quiet upstream main
+      - name: Fast-forward the mirror
+        run: |
+          # Fails (and stops the job) if `main` is not an ancestor of upstream/main, which would
+          # mean someone committed to the mirror.
+          git push origin upstream/main:refs/heads/main
+      - name: Open a pull request with upstream's changes
+        run: |
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "dsh already contains upstream/main"; exit 0
+          fi
+          branch="sync/upstream-$(git rev-parse --short upstream/main)"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "$branch already exists"; exit 0
+          fi
+          git switch -c "$branch"
+          if ! git merge --no-ff -m "Merge upstream/main ($(git rev-parse --short upstream/main))" upstream/main; then
+            git merge --abort
+            gh issue create \
+              --title "Merging upstream/main ($(git rev-parse --short upstream/main)) into dsh conflicts" \
+              --body "Resolve by hand: git switch dsh && git merge upstream/main. Keep DSH changes additive (docs/dsh/adr/0002)."
+            exit 0
+          fi
+          git push origin "$branch"
+          gh pr create --base dsh --head "$branch" \
+            --title "Merge upstream/main ($(git rev-parse --short upstream/main))" \
+            --body "Upstream changes since the last sync. dsh-ci runs the tests and the additive budget; merge when green."
