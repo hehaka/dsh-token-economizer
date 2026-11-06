@@ -6,7 +6,7 @@ Dotyczy [ADR 0001](adr/0001-integracja-z-tokeneconomizer.md) i [ADR 0002](adr/00
 |---|---|---|---|
 | B1 | Czy sesję DSH da się zapisać w formacie Pi i odczytać czytnikami upstreamu? | **Tak** | uruchomione na prawdziwej sesji |
 | B2 | Czy rdzeń zna ceny modeli DSH? | **Częściowo, bez blokady** | z kodu |
-| B3 | Czy `tools/post-execute` może dołączyć kontekst dla modelu? | **Tak** (`additionalContexts`) | z typów, bez uruchomienia |
+| B3 | Czy `tools/post-execute` może dołączyć kontekst dla modelu? | **Tak** (`additionalContexts`) | z typów **i potwierdzone na żywo** (patrz „Weryfikacja na żywym DSH”) |
 | B4 | Czy `ctx.llm` nadaje się do wywołań pomocniczych? | **Tak, jednorazowe `stream()`** | z typów, bez uruchomienia |
 | B5 | Czy `dsh plugin add` zainstaluje plugin z podkatalogu repo? | **Tak, ale tylko ten podkatalog** | uruchomione na lokalnym repo testowym |
 
@@ -48,3 +48,28 @@ Wnioski wiążące dla implementacji:
 - **Zbiór narzędzi chronionych przed pruningiem** (`plugin/adapter.py`: `PROTECTED_TOOLS | INTERACTIVE_PROTECTED`) ma nazwy w stylu Claude (`Bash`, `Edit`…). Host `dsh` potrzebuje własnego zbioru (`bash`, `read`, `edit`, `write`, `glob`, `grep`, `tool_search`, `tool_describe`, `tool_call`, `skill`, `subagent*`, `ask_user_question`, `todo_write`…), inaczej pruning mógłby zaproponować usunięcie narzędzi podstawowych lub wyszukiwarki narzędzi. To kilkanaście linii w `adapter.py` (z budżetu).
 - **Pruning a `dsh-tool-search`:** w tej instalacji większość narzędzi jest już odroczona (kosztuje tylko wpis w katalogu), więc zysk z pruningu będzie mniejszy niż w upstreamie. Do oceny przed fazą F, na realnych sesjach.
 - **Nie zmierzono** kosztu `dsh headless` (próba uruchomienia z sandboxa zakończyła się `EPERM`); przy podejściu z `ctx.llm` nie jest już potrzebne.
+
+## Weryfikacja na żywym DSH (2026-11-06)
+
+Skrypt: `plugin/dsh/test/live/live-check.mjs` (uruchamia `dsh headless` z nakładką `--patch`, więc profil użytkownika nie jest zmieniany; stan rdzenia trafia do katalogu tymczasowego; wymaga `dsh` w PATH i pliku `.env` profilu z kluczem modelu, który wczytuje bez wypisywania). Dwa krótkie przebiegi (`claude-haiku-5-5`), wynik **13/13**.
+
+**Potwierdzone na żywo (headless, DSH 0.2.1-rc.5):**
+- Plugin ładuje się jako wpis `--patch`; kształty zdarzeń zgadzają się z założeniami: `SessionStart`, jeden `UserPromptSubmit` (`prompt_id` p1, tekst użytkownika), `PostToolUse` dla `bash` z argumentami jako obiektem i wynikiem w `tool_response`, `Stop`, `SessionEnd`.
+- Spool zawiera tylko prompt wpisany przez użytkownika, bez wstrzykniętego kontekstu.
+- **Fakty** z `system-prompt/assemble` trafiają do modelu jako wiadomość `runtime-context` (log sesji + odpowiedź modelu).
+- **Kontekst po narzędziu**: DSH kolejkuje go (`agent/inbox/spliced`, cel `next-step`), zapisuje jako wiadomość `user` ze `source.kind: token-economizer` po wyniku narzędzia i przed następną odpowiedzią; podsłuch `llm/stream` pokazał, że jest w żądaniu kroku 2.
+- Z prawdziwym rdzeniem sesja kończy się rekordem w księdze (`requests 2`, `priced_by: model`).
+
+**Znalezione błędy, naprawione:**
+1. `session/disposed` **nie jest emitowane w trybie headless** (proces kończy się przez `beforeExit`) → brak `SessionEnd` i brak foldu. Plugin domyka otwarte sesje na `beforeExit`; po zabitym procesie rdzeń składa sesję przy następnym starcie w tym repozytorium.
+2. DSH przekazuje **`null`** jako konfigurację wpisu bez `config:` → `TypeError`, wpis się nie aktywował (DSH tylko ostrzegł, przebieg szedł dalej bez pluginu). `createPlugin` toleruje `null`.
+3. Notatka po narzędziu bez opakowania była przez model uznana za nieobecną; opakowanie w `<system-reminder>` (konwencja DSH dla kontekstu) sprawiło, że model ją widział. Nadal **odmówił** podania „kodu” z automatycznej wiadomości — to artefakt projektu testu (prośba o echo kodu wygląda jak wstrzyknięcie), nie błąd pluginu, więc skrypt ocenia dostarczenie z logu DSH, a odpowiedzi modelu tylko raportuje.
+
+**Nie sprawdzone:**
+- tryby interaktywne (TUI, web): czy `session/disposed` jest tam emitowane i czy pojedyncza sesja web z wieloma promptami numeruje je poprawnie;
+- izolacja subagentów na żywo (jest w testach z atrapą `ctx`);
+- czy model faktycznie **stosuje się** do realnej uwagi straży pętli (tu sprawdzono tylko dostarczenie);
+- `ctx.llm` (wywołania pomocnicze), komendy `/te`, przycinanie narzędzi;
+- import `createUserMessage` z `@deepseek-ai/dsh-llm` z zainstalowanego pakietu (w teście z katalogu tymczasowego zadziałał zapasowy, ręcznie zbudowany obiekt wiadomości i DSH go przyjął);
+- współistnienie z `dsh-hooks-claude-code` w tym samym profilu.
+

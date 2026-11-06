@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { createPlugin } from '../src/plugin.mjs';
+import { createPlugin, reminder } from '../src/plugin.mjs';
 import { BOOTSTRAP, dshEvents, fakeCtx, fakeRepo, findFiles, isolatedEnv, readJsonl, rootSession, subSession, tmp } from './helpers.mjs';
 
 const exec = (session, id, name, args) => ({ id, name, arguments: JSON.stringify(args), agent: { session } });
@@ -13,7 +13,7 @@ function setup(extra = {}) {
   const repo = fakeRepo(root);
   const env = isolatedEnv(root);
   const ctx = fakeCtx();
-  const plugin = createPlugin(ctx, { env, bootstrap: BOOTSTRAP, ...extra });
+  const plugin = createPlugin(ctx, { env, bootstrap: BOOTSTRAP, closeOnExit: false, ...extra });
   return { root, repo, env, ctx, plugin };
 }
 
@@ -80,7 +80,8 @@ test('what the core answers rides back as context, and a failing core changes no
   assert.equal(decision.kind, 'accept');
   assert.equal(decision.additionalContexts.length, 1);
   assert.equal(decision.additionalContexts[0].role, 'user');
-  assert.equal(decision.additionalContexts[0].content[0].text, 'STOP LOOPING');
+  assert.equal(decision.additionalContexts[0].content[0].text, reminder('STOP LOOPING'));
+  assert.match(decision.additionalContexts[0].content[0].text, /^<system-reminder>\nSTOP LOOPING\n<\/system-reminder>$/);
   assert.deepEqual(decision.additionalContexts[0].source, { kind: 'token-economizer' });
   await plugin.idle();
   assert.deepEqual(calls.slice(0, 2), ['SessionStart', 'PostToolUse']);
@@ -96,4 +97,31 @@ test('TE_DISABLE turns the plugin off', () => {
   const ctx = fakeCtx();
   assert.equal(createPlugin(ctx, { env: { TE_DISABLE: '1' } }), null);
   assert.deepEqual(ctx.handlers, {});
+});
+
+test('sessions still open when the process ends are closed (headless sends no session/disposed)', async () => {
+  const calls = [];
+  const { ctx, repo, plugin } = setup({ closeOnExit: true, run: async (p) => (calls.push(`${p.hook_event_name}:${p.session_id}`), {}) });
+  const onExit = globalThis[Symbol.for('dsh-token-economizer.exit')];
+  assert.equal(typeof onExit, 'function');
+  assert.ok(process.listeners('beforeExit').includes(onExit), 'registered on the process');   // not emitted: node:test listens too
+  ctx.handlers['session/created'][0](rootSession('open-1', repo));
+  ctx.handlers['session/created'][0](rootSession('open-2', repo));
+  ctx.handlers['session/disposed'][0](rootSession('open-2', repo));       // closed the normal way
+  await plugin.idle();
+  onExit();
+  await plugin.idle();
+  onExit();                                                                // the loop re-arms: no second close
+  await plugin.idle();
+  assert.deepEqual(calls.filter((c) => c.startsWith('SessionEnd')).sort(), ['SessionEnd:open-1', 'SessionEnd:open-2']);
+  assert.equal(plugin.states.size, 0);
+  process.off('beforeExit', onExit);
+});
+
+test('an entry without config (DSH passes null) loads', () => {
+  const ctx = fakeCtx();
+  const plugin = createPlugin(ctx, null);
+  assert.ok(plugin && plugin.states instanceof Map);
+  assert.ok(ctx.handlers['session/created'].length === 1, 'its handlers are registered');
+  process.off('beforeExit', globalThis[Symbol.for('dsh-token-economizer.exit')]);
 });

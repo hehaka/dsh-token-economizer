@@ -35,6 +35,10 @@ function withTimeout(p, ms) {
   return Promise.race([p, new Promise((r) => (t = setTimeout(r, ms)))]).finally(() => clearTimeout(t));
 }
 
+// DSH's own context messages (agent instructions, the skill catalog) come wrapped like this; an
+// unwrapped note after a tool result was read as noise by the model (docs/dsh/spike-phase-b.md).
+export const reminder = (text) => `<system-reminder>\n${text}\n</system-reminder>`;
+
 let makeUserMessage;
 async function userMessage(text) {
   if (!makeUserMessage) {
@@ -45,10 +49,11 @@ async function userMessage(text) {
     }
     makeUserMessage ??= ({ content, source }) => ({ id: randomUUID(), role: 'user', content, source });
   }
-  return makeUserMessage({ content: [{ type: 'text', text }], source: SOURCE });
+  return makeUserMessage({ content: [{ type: 'text', text: reminder(text) }], source: SOURCE });
 }
 
-export function createPlugin(ctx, config = {}) {
+export function createPlugin(ctx, options) {
+  const config = options ?? {};          // DSH passes null for an entry without `config:` (found live)
   const env = config.env ?? process.env;
   const log = (level, msg) => {
     try {
@@ -221,6 +226,22 @@ export function createPlugin(ctx, config = {}) {
       /* ignore */
     }
   });
+
+  // `dsh headless` ends the process without a `session/disposed` (checked live, docs/dsh/
+  // spike-phase-b.md), so sessions still open when the event loop drains are closed here: the
+  // hook call is async work, which keeps the process alive until it is done. Whatever a killed
+  // process leaves is folded by the core at the next session start in that repository.
+  if (config.closeOnExit !== false) {
+    const key = Symbol.for('dsh-token-economizer.exit');
+    if (globalThis[key]) process.off('beforeExit', globalThis[key]);
+    globalThis[key] = () => {
+      for (const st of [...states.values()]) {
+        states.delete(st.key);
+        enqueue(st, () => hook(st, 'SessionEnd', { reason: 'other' }));
+      }
+    };
+    process.on('beforeExit', globalThis[key]);
+  }
 
   log('info', `active (state: ${stateRoot})`);
   return { states, idle };
