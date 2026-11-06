@@ -63,3 +63,12 @@ Nowy koszt: użytkownik dostaje zmiany upstreamu z opóźnieniem równym tempu n
 | E Guard | loop guard + wywołania pomocnicze przez `ctx.llm` | powtarzający się błąd daje 1 przekierowanie; brak przy sesji bez pętli |
 | F Pruning | `ctx.tools.restrict`, `restore` | nieużywane narzędzie znika od następnej sesji; `restore` je przywraca |
 | G Upstream | PR z hostem `dsh` | PR otwarty, uwagi upstreamu obsłużone |
+
+## Aktualizacja po fazie B (2026-11-06)
+
+Wyniki: [spike-phase-b.md](../spike-phase-b.md).
+
+- **Dystrybucja przez gałąź `dist`, nie przez podkatalog.** `pnpm add …#path:/plugin/dsh` działa, ale instaluje tylko ten podkatalog, więc rdzeń Pythona z korzenia repo nie trafiłby do instalacji. Korekta zdania „rdzeń obok pluginu w tym samym checkoucie” powyżej: obok pluginu jest on w repo, a w instalacji — dopiero po zbudowaniu. `scripts/build_dsh_plugin.py` (nowy plik) kopiuje `plugin/dsh/` i `tokeneconomizer/` do bundla (wzorzec `scripts/build_plugin.py` upstreamu), a CI publikuje wynik na gałąź `dist`, z której instaluje się plugin DSH. Reguła addytywności i budżet bez zmian: nie edytujemy głównego `package.json` upstreamu.
+- **Format Pi potwierdzony** na prawdziwej sesji; z ADR 0001 §5 obowiązuje bez zmian (z zastrzeżeniem o pomijaniu wstrzykniętego kontekstu).
+- **Do `adapter.py` dochodzi zbiór narzędzi chronionych dla `dsh`** (patrz notatka ze spike'u); mieści się w budżecie.
+
