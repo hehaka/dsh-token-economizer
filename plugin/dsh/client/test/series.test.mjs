@@ -48,6 +48,14 @@ test('stacked columns are exact: a segment is value / axis max of the plot heigh
   assert.deepEqual(g.xLabels.map((l) => l.text), ['a', 'b']);
 });
 
+test('a count axis labels whole numbers only', () => {
+  const labels = (max) => D.layoutColumns([{ label: 'a', parts: { nudges: max } }], { width: 200, height: 100, order: D.REDIRECT_ORDER, fmt: D.countFmt }).yTicks.map((t) => t.label);
+  assert.deepEqual(labels(1), ['0', '', '1']);               // not 0, 1, 1
+  assert.deepEqual(labels(2), ['0', '1', '2']);
+  assert.deepEqual(labels(4), ['0', '2', '4']);
+  assert.deepEqual(labels(3), ['0', '', '3']);               // the half-way tick 1.5 has no whole number
+});
+
 test('few columns are all labelled (repeats dropped), many only at the ends', () => {
   const lab = (labels) => D.layoutColumns(labels.map((l) => ({ label: l, parts: { input: 1 } })), { width: 300, height: 120 }).xLabels.map((l) => l.text);
   assert.deepEqual(lab(['4 Nov', '4 Nov', '5 Nov', '6 Nov', '6 Nov']), ['4 Nov', '5 Nov', '6 Nov']);

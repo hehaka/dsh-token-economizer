@@ -13,6 +13,8 @@ const COLORS = { cache_read: '#3aa6a0', input: '#4c8dff', cache_write: '#e0a030'
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const finite = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+/** Axis labels for counts: whole numbers only, so a maximum of 1 reads 0 . 1 and not 0 1 1. */
+const countFmt = (v) => (Number.isInteger(v) ? String(v) : '');
 const pad2 = (n) => String(n).padStart(2, '0');
 
 /** Epoch seconds -> "2026-11-06 14:42" in the viewer's time zone; "—" when unknown. */
@@ -161,4 +163,4 @@ function median(v) {
 const DAY_ORDER = ['effective', 'overhead'];
 const REDIRECT_ORDER = ['nudges', 'aborts'];
 
-module.exports = { DAY_ORDER, REDIRECT_ORDER, RANGES, DEFAULT_RANGE, STACK, LABELS, COLORS, fmtWhen, dayKey, dayLabel, normalizeSessions, sliceRange, groupByDay, niceMax, layoutColumns, layoutLine, sessionColumns, dayColumns, summarize };
+module.exports = { countFmt, DAY_ORDER, REDIRECT_ORDER, RANGES, DEFAULT_RANGE, STACK, LABELS, COLORS, fmtWhen, dayKey, dayLabel, normalizeSessions, sliceRange, groupByDay, niceMax, layoutColumns, layoutLine, sessionColumns, dayColumns, summarize };

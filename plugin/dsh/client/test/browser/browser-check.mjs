@@ -108,9 +108,14 @@ try {
     const repoRoot = /"repo_root":\s*"([^"]+)"/.exec(await browser.evaluate('document.body.innerText'))?.[1];
     check('the panel\'s command ran through the host (its output is in the chat)', Boolean(repoRoot), repoRoot ?? 'no repo_root in the page');
     if (repoRoot) {
-      const N = 6;
-      const seed = spawnSync('python3', [join(HERE, 'seed_session.py'), repoRoot, state, '--sessions', String(N), '--days', '4'], { encoding: 'utf8', env: { ...env, PYTHONPATH: ROOT } });
-      check(`${N} finished sessions on different days were folded into the ledger (real hook lifecycle)`, seed.status === 0, seed.status === 0 ? '' : seed.stderr.slice(-300));
+      const N = 9;
+      const seed = spawnSync('python3', [join(HERE, 'seed_session.py'), repoRoot, state, '--sessions', String(N), '--days', '4', '--facts', '--stuck', '6'], { encoding: 'utf8', env: { ...env, PYTHONPATH: ROOT } });
+      check(`${N} finished sessions on different days, with learned facts injected and one looping turn, were folded into the ledger (real hook lifecycle)`, seed.status === 0, seed.status === 0 ? '' : seed.stderr.slice(-300));
+      // What the core says was recorded: the DOM is compared with this, not with numbers typed here.
+      const truth = JSON.parse(spawnSync('python3', [join(ROOT, 'plugin', 'scripts', 'te_bootstrap.py'), 'cli', '--host', 'dsh', '--cwd', repoRoot, 'panel', '--json'], { encoding: 'utf8', env: { ...env, PYTHONPATH: ROOT } }).stdout).series.sessions;
+      const injected = truth.filter((r) => r.injected).length;
+      const redirects = truth.reduce((a, r) => a + (r.nudges > 0 ? 1 : 0) + (r.aborts > 0 ? 1 : 0), 0);
+      check('the seed really produced injected facts and a redirected loop (the checks below are not vacuous)', injected >= 1 && injected < N && truth.some((r) => r.nudges > 0) && truth.some((r) => r.aborts > 0), `${injected} injected, ${truth.filter((r) => r.nudges > 0).length} session(s) with a redirect`);
       await browser.evaluate("document.querySelector('[data-te=refresh]').click()");
       await browser.waitFor("!!document.querySelector('[data-te=stat-Sessions]') && !!document.querySelector('[data-te=history]')", { timeout: 30000, label: 'numbers and history' });
       const text = await browser.evaluate("document.querySelector('[data-te]').parentElement.innerText");
@@ -131,8 +136,13 @@ try {
       const pts = await q("(()=>{const c=document.querySelector('[data-te=chart-cache] svg');return c?+c.getAttribute('data-te-points'):-1})()");
       check('History: the cache hit rate has a point per session', pts === N, `points ${pts}`);
       const dayBars = await q("(()=>{const c=document.querySelector('[data-te=chart-days] svg');return c?+c.getAttribute('data-te-bars'):-1})()");
-      check('History: the per-day chart has one bar per calendar day', dayBars === 5, `days ${dayBars}`);
-      check('History: no loop-guard chart when the guard never fired', (await q("!!document.querySelector('[data-te=chart-redirects]')")) === false);
+      check('History: the per-day chart has one bar per calendar day', dayBars === new Set(truth.map((r) => new Date(r.started * 1000).toDateString())).size, `days ${dayBars}`);
+      check('History: the facts-injected marker is drawn once per session that had facts', (await q("document.querySelectorAll('[data-te=chart-sessions] [data-te-marker]').length")) === injected, `${injected} session(s)`);
+      check('History: the caption and the chart note the injected sessions', (await q("(()=>{const t=document.querySelector('[data-te=history]').innerText;return t.includes('facts injected in " + injected + "')&&t.includes('facts injected')})()")) === true);
+      check('History: the loop-guard chart appears because the guard fired', (await q("!!document.querySelector('[data-te=chart-redirects]')")) === true);
+      const rd = await q("(()=>{const c=document.querySelector('[data-te=chart-redirects]');return {bars:+c.querySelector('svg').getAttribute('data-te-bars'),segs:[...c.querySelectorAll('[data-te-seg]')].map(r=>r.getAttribute('data-te-seg')),caption:c.innerText}})()");
+      check('History: the loop-guard chart has a bar per session and one segment per redirect and notice', rd.bars === N && rd.segs.length === redirects && rd.segs.includes('nudges') && rd.segs.includes('aborts'), `${rd.bars} bars, segments ${rd.segs.join(',')}`);
+      check('History: the tooltip of the looping session carries its 40 requests and its redirect', (await q("[...document.querySelectorAll('[data-te=chart-sessions] [data-te-bar] title')].some(t=>/40 requests/.test(t.textContent)&&/1 redirect\\(s\\), 1 still-stuck/.test(t.textContent))")) === true);
       const geo = await q(`(()=>{const svg=document.querySelector('[data-te=chart-sessions] svg');const box=svg.parentElement.getBoundingClientRect();const w=svg.getBoundingClientRect().width;const bad=[...svg.querySelectorAll('[data-te-seg]')].filter(r=>{const b=r.getBoundingClientRect();return !(b.height>0&&b.width>0)}).length;return {w:Math.round(w),box:Math.round(box.width),bad}})()`);
       check('History: the chart fills its container width and every segment has size', geo.w > 300 && Math.abs(geo.w - geo.box) <= 2 && geo.bad === 0, `svg ${geo.w}px in ${geo.box}px, ${geo.bad} empty segment(s)`);
       check('History: the legend names the parts and the page claims no saving', (await q("(()=>{const t=document.querySelector('[data-te=history]').innerText;return /Cache reads/.test(t)&&/Fresh input/.test(t)&&/Recorded values only/.test(t)&&!/\\bsaved\\b|you save/i.test(t)})()")) === true);

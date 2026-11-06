@@ -71,7 +71,7 @@ function createViews(React) {
         : null,
       sum.nudges + sum.aborts > 0
         ? h(Titled, { name: 'redirects', title: 'Loop guard', caption: `${sum.nudges} redirect(s), ${sum.aborts} still-stuck` },
-          h(Sized, null, (w) => h(Columns, { items: redirects, width: w, height: 80, order: D.REDIRECT_ORDER, fmt: (v) => String(Math.round(v)), label: 'Loop guard redirects for each session' })),
+          h(Sized, null, (w) => h(Columns, { items: redirects, width: w, height: 80, order: D.REDIRECT_ORDER, fmt: D.countFmt, label: 'Loop guard redirects for each session' })),
           h(Legend, { keys: ['nudges', 'aborts'] }))
         : null,
       h('div', { style: { ...S.small, fontSize: 10.5 }, 'data-te': 'history-note' }, 'Recorded values only. The ledger has no run without the plugin to compare with, so no saving is estimated here.'));
