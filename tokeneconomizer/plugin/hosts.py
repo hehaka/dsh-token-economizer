@@ -866,6 +866,7 @@ def _ancestor_args(limit=4):
 
 HOSTS = {"claude": ClaudeCode, "codex": Codex, "copilot": Copilot, "opencode": OpenCode,
          "pi": Pi, "cursor": Cursor, "hermes": Hermes}
+from . import host_dsh  # noqa: E402,F401  registers "dsh" in HOSTS (docs/dsh/adr/0002)
 
 
 def default_host(env=None, recent=None):

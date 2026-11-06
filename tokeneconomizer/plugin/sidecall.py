@@ -677,4 +677,8 @@ def runner_for(host_name, config):
         return lambda prompt, _m="agent": codex_call(prompt, model=model)
     if host_name == "copilot":
         return lambda prompt, _m="agent": copilot_call(prompt, model=model)
+    if host_name == "dsh":
+        # DSH's calls arrive with its plugin (docs/dsh/adr/0001, phase E); until then none is
+        # made, and never through another agent's CLI.
+        return lambda prompt, _m="agent": ("", None)
     return lambda prompt, _m="agent": claude_call(prompt, model=model or "haiku")

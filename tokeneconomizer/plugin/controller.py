@@ -70,8 +70,8 @@ class LiveController:
         """How a person runs one of the plugin's commands on this host."""
         if self.host.name in ("claude", "copilot"):    # Copilot's TUI runs plugin commands too
             return f"/tokeneconomizer:{name}"
-        if self.host.name == "pi":
-            return f"/te {name}"                 # registered by the Pi extension
+        if self.host.name in ("pi", "dsh"):
+            return f"/te {name}"                 # registered by the Pi extension / the DSH plugin
         if self.host.name == "codex":
             return f"$tokeneconomizer:{name}"    # the plugin's Codex skills
         return f"te --host {self.host.name} {name}"
