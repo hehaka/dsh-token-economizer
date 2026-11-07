@@ -8,15 +8,15 @@
  "base": "0bce3df",
  "max_iterations": 14,
  "budget": 140,
- "calls": 2,
- "iteration": 2,
+ "calls": 3,
+ "iteration": 3,
  "open": {
-  "k": 2,
-  "item": "T2",
+  "k": 3,
+  "item": "T3",
   "fix_rounds": 0,
-  "start": "4217a8c",
+  "start": "7df5354",
   "notes": [
-   "T2: live-multisession models 24/24 (orchestrator re-run), resume 9/9, npm test 153/0"
+   "T3: live-proxy 26/26 re-run by orchestrator, no production defect"
   ]
  },
  "items": [
@@ -53,9 +53,9 @@
    "deps": [
     "T1"
    ],
-   "status": "open",
-   "iteration": null,
-   "commit": null,
+   "status": "done",
+   "iteration": 2,
+   "commit": "7df5354",
    "hypotheses": [],
    "block": null
   },
@@ -166,7 +166,8 @@
  "dod": {},
  "dod_result": "",
  "log": [
-  "it1 T1: done, commit 4217a8c, fix rounds 0"
+  "it1 T1: done, commit 4217a8c, fix rounds 0",
+  "it2 T2: done, commit 7df5354, fix rounds 0; T2: live-multisession models 24/24 (orchestrator re-run), resume 9/9, npm test 153/0"
  ],
  "decisions": [
   {
@@ -189,7 +190,8 @@
   }
  ],
  "deferred": [
-  "known limit: in dsh web, after session/selectModel and before the session's first request the endpoint answers a call for that session on the profile default model (agent.options), not on the selected model; never another session's route (live-multisession (f)). Fix needs a DSH event carrying the selection; not found in the spike"
+  "known limit: in dsh web, after session/selectModel and before the session's first request the endpoint answers a call for that session on the profile default model (agent.options), not on the selected model; never another session's route (live-multisession (f)). Fix needs a DSH event carrying the selection; not found in the spike",
+  "tool_call to an unknown tool: dsh-tool-search answers {ok:false} with isError false, so the spool records a phantom successful call under that name (harmless: not in the catalog, never in deny)"
  ],
  "stop": "",
  "goal": {
@@ -198,7 +200,7 @@
   "phase": "active",
   "audit": null
  },
- "last_commit": "4217a8c",
- "last_item": "T1",
+ "last_commit": "7df5354",
+ "last_item": "T2",
  "needs_dod": true
 }

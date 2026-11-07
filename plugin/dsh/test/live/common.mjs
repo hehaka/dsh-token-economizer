@@ -85,6 +85,31 @@ export function overlay(work, entry, name, config) {
   return file;
 }
 
+/**
+ * Like `overlay`, for several entries: `entries` is `[{ id, name, config? }]`, inserted in that order
+ * (live-proxy.mjs: the dsh-tool-search entry first, then the plugin).
+ */
+export function overlayEntries(work, name, entries) {
+  const file = join(work, `${name}.patch.yml`);
+  const one = ({ id, name: pkg, config = {} }) => {
+    const cfg = Object.entries(config).map(([k, v]) => `        ${k}: ${JSON.stringify(v)}`).join('\n');
+    return `    - id: ${id}\n      name: ${JSON.stringify(pkg)}\n${cfg ? `      config:\n${cfg}\n` : ''}`;
+  };
+  writeFileSync(file, `- insert:\n${entries.map(one).join('')}`);
+  return file;
+}
+
+/** `lib/index.js` of an npm package installed under a DSH profile (the profile's own copy first, then `fallbacks`), or undefined. */
+export function profilePackageEntry(pkgName, profile, fallbacks = []) {
+  const base = join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'profiles');
+  return [profile, ...fallbacks].map((p) => join(base, p, 'node_modules', pkgName, 'lib', 'index.js')).find(existsSync);
+}
+
+/** Runs the core's CLI (`te ...`) as the plugin's `/te` does: `te_bootstrap.py cli --host dsh --cwd <cwd> ...args`. */
+export const teCli = (pkg, cwd, args, env, timeout = 60_000) =>
+  spawnSync('python3', [join(pkg, 'scripts', 'te_bootstrap.py'), 'cli', '--host', 'dsh', '--cwd', cwd, ...args],
+    { encoding: 'utf8', timeout, cwd, env: { ...process.env, ...env, PYTHONUTF8: '1' } });
+
 // Runs `dsh` (default cwd: <work>/repo) with extra environment variables.
 export const dsh = (work, args, env, timeout, cwd = join(work, 'repo')) =>
   spawnSync('dsh', args, { encoding: 'utf8', timeout, env: { ...process.env, ...env }, cwd });

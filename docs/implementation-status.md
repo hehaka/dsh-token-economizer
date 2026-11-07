@@ -6,10 +6,10 @@
 - instruction: repo CLAUDE.md
 - base commit: 0bce3df
 - DoD: docs/dod.md, frozen sha256 29ef905b325fe55bb641acaec6703f78a0e97bc23751ee39e75130de9a1d5f2c
-- iteration: 2 / 14
-- subagent calls: 2 / 140
-- last commit: 4217a8c
-- open iteration: 2, item T2, fix rounds 0, started at 4217a8c
+- iteration: 3 / 14
+- subagent calls: 3 / 140
+- last commit: 7df5354
+- open iteration: 3, item T3, fix rounds 0, started at 7df5354
 - goal: goal-4ef63029-44d6-4e4b-8a8c-9990ca83f071, active
 
 ## DoD
@@ -20,7 +20,7 @@
 | id | kind | priority | serves | deps | status | iteration | commit | scope |
 |---|---|---|---|---|---|---|---|---|
 | T1 | other | must | D1,D2,D3,D4,D5 | - | done | 1 | 4217a8c | plan T1: feasibility spike for two models/proxy/PTC/TUI/resume |
-| T2 | behaviour | must | D1,D2,D6,D7 | T1 | open | - | - | plan T2: live-multisession.mjs models/resume |
+| T2 | behaviour | must | D1,D2,D6,D7 | T1 | done | 2 | 7df5354 | plan T2: live-multisession.mjs models/resume |
 | T3 | behaviour | must | D3,D6,D7 | T1 | open | - | - | plan T3: live-proxy.mjs |
 | T4 | behaviour | must | D4,D6,D7,D8 | T1 | open | - | - | plan T4: live-ptc.mjs and fix if needed |
 | T5 | behaviour | must | D5,D6,D7 | T1 | blocked | - | - | plan T5: live-tui.mjs |
@@ -32,6 +32,7 @@
 
 ## Last 10 iterations (full log: docs/iterations/log.md)
 - it1 T1: done, commit 4217a8c, fix rounds 0
+- it2 T2: done, commit 7df5354, fix rounds 0; T2: live-multisession models 24/24 (orchestrator re-run), resume 9/9, npm test 153/0
 
 ## Last 10 decisions (all: docs/iterations/decisions.md)
 - it1: T1 outcome: T2, T3, T4 go ahead with the spike's recipes; T5 (TUI) is blocked. Why: docs/iterations/1-spike.md: Q1 two sessions on different models in one dsh web is possible (UI pick + HTTP RPC session/create, session/selectModel, session/prompt); Q2 resume = --session-id with an agent-default-model overlay; Q3 dsh-tool-search overlay gives tool_search/tool_call; Q4 PTC = tools entry config mode ptc, nested bash is NOT in the spool (only run_code), Q5 this dsh install has no TUI profile (dsh tui: profile tui does not exist), so D5 cannot be met here and the DoD is frozen.
@@ -40,3 +41,4 @@
 
 ## Deferred
 - known limit: in dsh web, after session/selectModel and before the session's first request the endpoint answers a call for that session on the profile default model (agent.options), not on the selected model; never another session's route (live-multisession (f)). Fix needs a DSH event carrying the selection; not found in the spike
+- tool_call to an unknown tool: dsh-tool-search answers {ok:false} with isError false, so the spool records a phantom successful call under that name (harmless: not in the catalog, never in deny)
