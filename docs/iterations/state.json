@@ -10,16 +10,7 @@
  "budget": 180,
  "calls": 5,
  "iteration": 2,
- "open": {
-  "k": 2,
-  "item": "T3",
-  "fix_rounds": 1,
-  "start": "981b3e8",
-  "notes": [
-   "T3 implemented by sonnet; orchestrator re-ran live-sidecall --only paid 12/12, npm test 91/0, mutation (drop provider from reply) -> 3 Node tests fail",
-   "T3 fix round 1: 5a test plugin/dsh/test/stub_core.test.mjs written (6 of 7 fail on assertions); 5b next"
-  ]
- },
+ "open": null,
  "items": [
   {
    "id": "T1",
@@ -47,9 +38,9 @@
    "deps": [
     "T1"
    ],
-   "status": "open",
-   "iteration": null,
-   "commit": null,
+   "status": "done",
+   "iteration": 2,
+   "commit": "07c6c65",
    "hypotheses": [
     "round 1: The stub core runs all variants in one hook so a slow model exceeds the 20 s hook limit and the once-marker blocks recovery; claiming one variant per hook process fixes it"
    ],
@@ -199,84 +190,85 @@
    "verification": "command",
    "status": "fail",
    "evidence": "exit 1: Node.js v22.23.2",
-   "iteration": 1
+   "iteration": 2
   },
   "D2": {
    "verification": "command",
-   "status": "fail",
-   "evidence": "exit 1: Node.js v22.23.2",
-   "iteration": 1
+   "status": "pass",
+   "evidence": "exit 0: 13/13 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sidecall",
+   "iteration": 2
   },
   "D3": {
    "verification": "command",
    "status": "fail",
-   "evidence": "exit 1: Node.js v22.23.2",
-   "iteration": 1
+   "evidence": "exit 1: 0/0 passed. Work directory: (none)",
+   "iteration": 2
   },
   "D4": {
    "verification": "command",
    "status": "fail",
    "evidence": "exit 1: Node.js v22.23.2",
-   "iteration": 1
+   "iteration": 2
   },
   "D5": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 4/4 checks passed",
-   "iteration": 1
+   "iteration": 2
   },
   "D6": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: no output",
-   "iteration": 1
+   "iteration": 2
   },
   "D7": {
    "verification": "command",
    "status": "fail",
    "evidence": "exit 1: no output",
-   "iteration": 1
+   "iteration": 2
   },
   "D8": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 25/25 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live",
-   "iteration": 1
+   "iteration": 2
   },
   "D9": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: ..........................                                               [100%]",
-   "iteration": 1
+   "iteration": 2
   },
   "D10": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: changed lines in upstream files: 32 (budget 60)",
-   "iteration": 1
+   "iteration": 2
   },
   "D11": {
    "verification": "descriptive",
    "status": "not checked",
    "evidence": "excluded from exit; human review",
-   "iteration": 1
+   "iteration": 2
   },
   "D12": {
    "verification": "command",
    "status": "fail",
    "evidence": "exit 1: .............                                                            [100%]",
-   "iteration": 1
+   "iteration": 2
   },
   "D13": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 4/4 checks passed",
-   "iteration": 1
+   "iteration": 2
   }
  },
- "dod_result": "RESULT: FAIL (6 of 12 command criteria failed) (iteration 1, report docs/iterations/1-dod.md)",
+ "dod_result": "RESULT: FAIL (5 of 12 command criteria failed) (iteration 2, report docs/iterations/2-dod.md)",
  "log": [
-  "it1 T1: done, commit 8debe41, fix rounds 0; T1 implemented by sonnet; orchestrator re-ran npm test 91/0 and live-check 25/25 with real model"
+  "it1 T1: done, commit 8debe41, fix rounds 0; T1 implemented by sonnet; orchestrator re-ran npm test 91/0 and live-check 25/25 with real model",
+  "it2 T3: done, commit 07c6c65, fix rounds 1; T3 implemented by sonnet; orchestrator re-ran live-sidecall --only paid 12/12, npm test 91/0, mutation (drop provider from reply) -> 3 Node tests fail; T3 fix round 1: 5a test plugin/dsh/test/stub_core.test.mjs written (6 of 7 fail on assertions); 5b next"
  ],
  "decisions": [
   {
@@ -326,8 +318,8 @@
   "phase": "active",
   "audit": null
  },
- "last_commit": "8debe41",
- "last_item": "T1",
+ "last_commit": "07c6c65",
+ "last_item": "T3",
  "needs_dod": false,
- "dod_check_head": "8debe41"
+ "dod_check_head": "07c6c65"
 }
