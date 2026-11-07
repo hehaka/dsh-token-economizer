@@ -10,15 +10,7 @@
  "budget": 180,
  "calls": 23,
  "iteration": 8,
- "open": {
-  "k": 8,
-  "item": "T8",
-  "fix_rounds": 0,
-  "start": "349884f",
-  "notes": [
-   "T8: reviews A (sol) and B (mai) triaged; fixes A and B committed; report docs/reviews/2026-11-07-dsh-prune-sidecall.md"
-  ]
- },
+ "open": null,
  "items": [
   {
    "id": "T1",
@@ -166,9 +158,9 @@
     "T6",
     "T7"
    ],
-   "status": "open",
-   "iteration": null,
-   "commit": null,
+   "status": "done",
+   "iteration": 8,
+   "commit": "01f06f5",
    "hypotheses": [],
    "block": null
   },
@@ -198,82 +190,82 @@
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 15/15 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-prune",
-   "iteration": 7
+   "iteration": 8
   },
   "D2": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 13/13 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sidecall",
-   "iteration": 7
+   "iteration": 8
   },
   "D3": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 7/7 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-route",
-   "iteration": 7
+   "iteration": 8
   },
   "D4": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 34/34 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sessions-sigterm",
-   "iteration": 7
+   "iteration": 8
   },
   "D5": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 24/24 checks passed",
-   "iteration": 7
+   "iteration": 8
   },
   "D6": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: no output",
-   "iteration": 7
+   "iteration": 8
   },
   "D7": {
    "verification": "command",
-   "status": "fail",
-   "evidence": "exit 1: no output",
-   "iteration": 7
+   "status": "pass",
+   "evidence": "exit 0: no output",
+   "iteration": 8
   },
   "D8": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 25/25 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live",
-   "iteration": 7
+   "iteration": 8
   },
   "D9": {
    "verification": "command",
    "status": "pass",
-   "evidence": "exit 0: .....................................                                    [100%]",
-   "iteration": 7
+   "evidence": "exit 0: ...............................................................          [100%]",
+   "iteration": 8
   },
   "D10": {
    "verification": "command",
    "status": "pass",
-   "evidence": "exit 0: changed lines in upstream files: 32 (budget 60)",
-   "iteration": 7
+   "evidence": "exit 0: changed lines in upstream files: 46 (budget 60)",
+   "iteration": 8
   },
   "D11": {
    "verification": "descriptive",
    "status": "not checked",
    "evidence": "excluded from exit; human review",
-   "iteration": 7
+   "iteration": 8
   },
   "D12": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: ......................                                                   [100%]",
-   "iteration": 7
+   "iteration": 8
   },
   "D13": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 13/13 checks passed",
-   "iteration": 7
+   "iteration": 8
   }
  },
- "dod_result": "RESULT: FAIL (1 of 12 command criteria failed) (iteration 7, report docs/iterations/7-dod.md)",
+ "dod_result": "RESULT: PASS (12 command criteria) (iteration 8, report docs/iterations/8-dod.md)",
  "log": [
   "it1 T1: done, commit 8debe41, fix rounds 0; T1 implemented by sonnet; orchestrator re-ran npm test 91/0 and live-check 25/25 with real model",
   "it2 T3: done, commit 07c6c65, fix rounds 1; T3 implemented by sonnet; orchestrator re-ran live-sidecall --only paid 12/12, npm test 91/0, mutation (drop provider from reply) -> 3 Node tests fail; T3 fix round 1: 5a test plugin/dsh/test/stub_core.test.mjs written (6 of 7 fail on assertions); 5b next",
@@ -281,7 +273,8 @@
   "it4 T2: done, commit d2263dd, fix rounds 0; T2: live-prune-loop 15/15 re-run by orchestrator; mutation (applyDeny always off) -> 2 FAIL; review deferred to T8",
   "it5 T5: done, commit 22afdb9, fix rounds 0; T5: live-sessions 34/34 re-run by orchestrator; no production defect",
   "it6 T7: done, commit 1b7e8ba, fix rounds 0",
-  "it7 T6: done, commit f2c2d59, fix rounds 0; T6: browser-check strict CLI + --prune scenario; defect fix in tools.mjs/plugin.mjs; orchestrator re-ran npm test 124/0"
+  "it7 T6: done, commit f2c2d59, fix rounds 0; T6: browser-check strict CLI + --prune scenario; defect fix in tools.mjs/plugin.mjs; orchestrator re-ran npm test 124/0",
+  "it8 T8: done, commit 01f06f5, fix rounds 0; T8: reviews A (sol) and B (mai) triaged; fixes A and B committed; report docs/reviews/2026-11-07-dsh-prune-sidecall.md"
  ],
  "decisions": [
   {
@@ -371,8 +364,8 @@
   "phase": "active",
   "audit": null
  },
- "last_commit": "f2c2d59",
- "last_item": "T6",
+ "last_commit": "01f06f5",
+ "last_item": "T8",
  "needs_dod": false,
- "dod_check_head": "f2c2d59"
+ "dod_check_head": "01f06f5"
 }

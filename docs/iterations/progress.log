@@ -5,3 +5,4 @@
 2026-11-07 13:36 it=5/18 item=T5 commit=22afdb9 dod=10/12 blocked=0 calls=12/180 next=select
 2026-11-07 13:52 it=6/18 item=T7 commit=1b7e8ba dod=11/12 blocked=0 calls=15/180 next=select
 2026-11-07 14:10 it=7/18 item=T6 commit=f2c2d59 dod=11/12 blocked=0 calls=17/180 next=select
+2026-11-07 14:57 it=8/18 item=T8 commit=01f06f5 dod=12/12 blocked=0 calls=23/180 next=exit-check
