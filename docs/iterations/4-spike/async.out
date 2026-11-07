@@ -1,0 +1,10 @@
+[A1] exit=0 secs=8.2
+[A1] answer: done
+[A1] new spool(s): session-9387a39d-7238-491c-85c7-0d8941ae0528
+[A1] spool toolCall names: ["mcp__postgres__postgres_mcp_list_connection_profiles","bash"]
+[A1] toolResult  isError=false :: [{"type":"text","text":"{\n  \"profiles\": [\n    {\n      \"defaultDatabase\": \"myapp\",\n      \"hostName\": \"localhost:5432\",\n      \"profileId\": \"78fd81cd-086c-5b71-8c67-bc3dda655a54\",\n      \"profileName\": 
+[A1] toolResult  isError=false :: [{"type":"text","text":"spike-1\n"}]
+[A1] request/header tools: 183; bash=true; mcp__postgres__postgres_mcp_list_connection_profiles=true; mcp__ in request=154
+[A1] local.json present at exit: true; first seen 0.5 s after exit
+[A1-final] catalog=183 mcp_in_catalog=154 (minus used: 153); local.json exists=true
+[A1-final] deny count=153; mcp__ in deny=153; non-mcp in deny=[]; contains used MCP=false; contains bash=false; deny subset of catalog-minus-used=true; catalog-minus-used missing from deny=0

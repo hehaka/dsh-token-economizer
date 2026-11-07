@@ -8,35 +8,35 @@
 - DoD: docs/dod.md, frozen sha256 b763c64898e3d5cbaa2b97b53ff6daee318ab08bcb3f8dbd7590d1acd405b0d9
 - iteration: 3 / 18
 - subagent calls: 7 / 180
-- last commit: 07c6c65
-- open iteration: 3, item T4, fix rounds 0, started at 7a9b897
+- last commit: 5fbb1b0
+- open iteration: none
 - goal: goal-cd2e4c05-0c18-4e76-ab00-084d5e002fb9, active
 
 ## DoD
 | id | verification | status | evidence | iteration |
 |---|---|---|---|---|
-| D1 | command | fail | exit 1: Node.js v22.23.2 | 2 |
-| D2 | command | pass | exit 0: 13/13 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sidecall | 2 |
-| D3 | command | fail | exit 1: 0/0 passed. Work directory: (none) | 2 |
-| D4 | command | fail | exit 1: Node.js v22.23.2 | 2 |
-| D5 | command | pass | exit 0: 4/4 checks passed | 2 |
-| D6 | command | pass | exit 0: no output | 2 |
-| D7 | command | fail | exit 1: no output | 2 |
-| D8 | command | pass | exit 0: 25/25 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live | 2 |
-| D9 | command | pass | exit 0: ..........................                                               [100%] | 2 |
-| D10 | command | pass | exit 0: changed lines in upstream files: 32 (budget 60) | 2 |
-| D11 | descriptive | not checked | excluded from exit; human review | 2 |
-| D12 | command | fail | exit 1: .............                                                            [100%] | 2 |
-| D13 | command | pass | exit 0: 4/4 checks passed | 2 |
+| D1 | command | fail | exit 1: Node.js v22.23.2 | 3 |
+| D2 | command | pass | exit 0: 13/13 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sidecall | 3 |
+| D3 | command | pass | exit 0: 7/7 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-route | 3 |
+| D4 | command | fail | exit 1: Node.js v22.23.2 | 3 |
+| D5 | command | pass | exit 0: 4/4 checks passed | 3 |
+| D6 | command | pass | exit 0: no output | 3 |
+| D7 | command | fail | exit 1: no output | 3 |
+| D8 | command | pass | exit 0: 25/25 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live | 3 |
+| D9 | command | pass | exit 0: ............................                                             [100%] | 3 |
+| D10 | command | pass | exit 0: changed lines in upstream files: 32 (budget 60) | 3 |
+| D11 | descriptive | not checked | excluded from exit; human review | 3 |
+| D12 | command | fail | exit 1: .............                                                            [100%] | 3 |
+| D13 | command | pass | exit 0: 4/4 checks passed | 3 |
 
-RESULT: FAIL (5 of 12 command criteria failed) (iteration 2, report docs/iterations/2-dod.md)
+RESULT: FAIL (4 of 12 command criteria failed) (iteration 3, report docs/iterations/3-dod.md)
 
 ## Backlog
 | id | kind | priority | serves | deps | status | iteration | commit | scope |
 |---|---|---|---|---|---|---|---|---|
 | T1 | other | must | D8 | - | done | 1 | 8debe41 | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T1: plugin/dsh/test/live/common.mjs; live-check.mjs uses it |
 | T3 | behaviour | must | D2 | T1 | done | 2 | 07c6c65 | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T3: live-sidecall.mjs --only paid; stub_core imports real Runner |
-| T4 | behaviour | must | D3,D6,D9 | T3 | open | - | - | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T4: route before first request (probe, observeRoute, --only route, tests) |
+| T4 | behaviour | must | D3,D6,D9 | T3 | done | 3 | 5fbb1b0 | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T4: route before first request (probe, observeRoute, --only route, tests) |
 | T2 | behaviour | must | D1,D9 | T1 | open | - | - | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T2: live-prune-loop.mjs |
 | T5 | behaviour | must | D4,D6,D9 | T1 | open | - | - | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T5: live-sessions.mjs (subagent, concurrent, SIGTERM sweep) + fixes/tests |
 | T7 | behaviour | must | D6,D12,D13,D9 | - | open | - | - | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T7: panel.py side key, client model/view rows, model.test.mjs text |
@@ -50,6 +50,7 @@ RESULT: FAIL (5 of 12 command criteria failed) (iteration 2, report docs/iterati
 ## Last 10 iterations (full log: docs/iterations/log.md)
 - it1 T1: done, commit 8debe41, fix rounds 0; T1 implemented by sonnet; orchestrator re-ran npm test 91/0 and live-check 25/25 with real model
 - it2 T3: done, commit 07c6c65, fix rounds 1; T3 implemented by sonnet; orchestrator re-ran live-sidecall --only paid 12/12, npm test 91/0, mutation (drop provider from reply) -> 3 Node tests fail; T3 fix round 1: 5a test plugin/dsh/test/stub_core.test.mjs written (6 of 7 fail on assertions); 5b next
+- it3 T4: done, commit 5fbb1b0, fix rounds 0; T4 implemented by sonnet (tests + live route group, production code unchanged); orchestrator re-ran npm test 105/0 and live-sidecall --only route 7/7
 
 ## Last 10 decisions (all: docs/iterations/decisions.md)
 - it0: D7 command fixed before freeze. Why: the plan's D7 grep pattern with \\\| escapes matched everything (empty ERE alternative), so D7 could never pass; replaced by an awk check of severity/disposition columns, tested on open-high, fixed-high and missing file. Rejected: keeping the plan wording.
@@ -60,6 +61,7 @@ RESULT: FAIL (5 of 12 command criteria failed) (iteration 2, report docs/iterati
 - it2: T3: no second review. Why: fix round 1 is small and covered by 7 model-free tests (6 red before) plus live runs 13/13 and live-check 25/25; redactor masking the benign key cache_creation_input_tokens accepted as cosmetic.
 - it3: T4 outcome of spike: keep agent.options as the route source, no agentDefaultModel fallback. Why: spike 3-spike.md: agent.options.provider/model is set at agent/created (live), before the first request/context; session/created (SessionStart) precedes agent/created by ~55 ms so a core call that races that window may get NO_ROUTE. agentDefaultModel is the profile default, not necessarily the session's model (resume/switch), so using it could bill an unexpected model. Rejected: agentDefaultModel fallback; delaying SessionStart until agent/created.
 - it3: T4 tests are characterization tests, production code expected unchanged. Why: observeRoute(agent.options) already exists and was verified by the spike; the red state is D3 (live route group missing). NO_ROUTE live outcome is a race with agent/created, so the live check accepts either clean NO_ROUTE (no pause, zero charge) or success on the session's route; the deterministic NO_ROUTE path is covered by an offline Node test.
+- it3: T4 not reviewed by a second model. Why: production code unchanged; only characterization tests and a live script, validated by mutation checks (isRoot guard, observeRoute(agent.options)) and live runs; the final T8 review covers the whole diff.
 
 ## Deferred
 - T3: live-sidecall redactor also masks the key cache_creation_input_tokens in printed replies (cosmetic)

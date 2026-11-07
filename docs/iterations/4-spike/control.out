@@ -1,0 +1,6 @@
+[CTRL] exit=0 secs=7.2
+[CTRL] answer: ok
+[CTRL] new spool(s): session-2b000ccb-c280-4211-b0a0-d4ff32a1e729
+[CTRL] spool toolCall names: []
+[CTRL] request/header tools: 30; bash=true; mcp__postgres__postgres_mcp_list_connection_profiles=true; mcp__ in request=1
+[CTRL] tools in request=30; denied names present in request=0/153; bash=true; used mcp=true

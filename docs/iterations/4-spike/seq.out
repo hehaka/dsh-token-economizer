@@ -1,0 +1,27 @@
+[S1] exit=0 secs=10.8
+[S1] answer: done
+[S1] new spool(s): session-0fc9e2d7-49e2-4bdf-b17d-31ff5ac43a9c
+[S1] spool toolCall names: ["mcp__postgres__postgres_mcp_list_connection_profiles","bash"]
+[S1] toolResult  isError=false :: [{"type":"text","text":"{\n  \"profiles\": [\n    {\n      \"defaultDatabase\": \"myapp\",\n      \"hostName\": \"localhost:5432\",\n      \"profileId\": \"78fd81cd-086c-5b71-8c67-bc3dda655a54\",\n      \"profileName\": 
+[S1] toolResult  isError=false :: [{"type":"text","text":"spike-1\n"}]
+[S1] request/header tools: 183; bash=true; mcp__postgres__postgres_mcp_list_connection_profiles=true; mcp__ in request=154
+[S1-after-exit] catalog=183 mcp_in_catalog=154 (minus used: 153); local.json exists=true
+[S1-after-exit] deny count=153; mcp__ in deny=153; non-mcp in deny=[]; contains used MCP=false; contains bash=false; deny subset of catalog-minus-used=true; catalog-minus-used missing from deny=0
+[S2] exit=0 secs=8.0
+[S2] answer: done
+[S2] new spool(s): session-7847baa5-c767-4b2a-9831-f1f19b4081ab
+[S2] spool toolCall names: ["mcp__postgres__postgres_mcp_list_connection_profiles","bash"]
+[S2] toolResult  isError=false :: [{"type":"text","text":"{\n  \"profiles\": [\n    {\n      \"defaultDatabase\": \"myapp\",\n      \"hostName\": \"localhost:5432\",\n      \"profileId\": \"78fd81cd-086c-5b71-8c67-bc3dda655a54\",\n      \"profileName\": 
+[S2] toolResult  isError=false :: [{"type":"text","text":"spike-2\n"}]
+[S2] request/header tools: 30; bash=true; mcp__postgres__postgres_mcp_list_connection_profiles=true; mcp__ in request=1
+[S2-after-exit] catalog=183 mcp_in_catalog=154 (minus used: 153); local.json exists=true
+[S2-after-exit] deny count=153; mcp__ in deny=153; non-mcp in deny=[]; contains used MCP=false; contains bash=false; deny subset of catalog-minus-used=true; catalog-minus-used missing from deny=0
+[S3] exit=0 secs=7.5
+[S3] answer: done
+[S3] new spool(s): session-a5e4d60c-0d0e-410a-b7d5-ee4a14cd6a11
+[S3] spool toolCall names: ["mcp__postgres__postgres_mcp_list_connection_profiles","bash"]
+[S3] toolResult  isError=false :: [{"type":"text","text":"{\n  \"profiles\": [\n    {\n      \"defaultDatabase\": \"myapp\",\n      \"hostName\": \"localhost:5432\",\n      \"profileId\": \"78fd81cd-086c-5b71-8c67-bc3dda655a54\",\n      \"profileName\": 
+[S3] toolResult  isError=false :: [{"type":"text","text":"spike-3\n"}]
+[S3] request/header tools: 30; bash=true; mcp__postgres__postgres_mcp_list_connection_profiles=true; mcp__ in request=1
+[S3-after-exit] catalog=183 mcp_in_catalog=154 (minus used: 153); local.json exists=true
+[S3-after-exit] deny count=153; mcp__ in deny=153; non-mcp in deny=[]; contains used MCP=false; contains bash=false; deny subset of catalog-minus-used=true; catalog-minus-used missing from deny=0
