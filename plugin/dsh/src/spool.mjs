@@ -51,12 +51,26 @@ export function parseArgs(a) {
   return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clip(x)]));
 }
 
+// A deferred tool is reached through a proxy call (`tool_call {name, arguments}`): the model's
+// call names the proxy, but what ran, and what a tool-pruning verdict must count as used, is the
+// tool it names. The proxy is recorded as that tool.
+export const PROXY_TOOLS = new Set(['tool_call']);
+
+/** The call as the session's tool use: a proxy call becomes the call it carries. */
+export function unproxy(name, args) {
+  if (PROXY_TOOLS.has(name) && typeof args?.name === 'string' && args.name) {
+    return { name: args.name, arguments: parseArgs(args.arguments) };
+  }
+  return { name, arguments: args };
+}
+
 function assistantBlocks(content) {
   const out = [];
   for (const b of Array.isArray(content) ? content : []) {
     if (b?.type === 'text' && typeof b.text === 'string') out.push({ type: 'text', text: b.text });
     else if (b?.type === 'tool-call') {
-      out.push({ type: 'toolCall', id: b.id, name: b.name, arguments: parseArgs(b.arguments) });
+      const call = unproxy(b.name, parseArgs(b.arguments));
+      out.push({ type: 'toolCall', id: b.id, name: call.name, arguments: call.arguments });
     }
   }
   return out;

@@ -93,6 +93,6 @@ Decyzje: [ADR 0003](adr/0003-czesc-wizualna.md). Sprawdzone w **prawdziwej przeg
 - Okna pierwszego uruchomienia (`Preview Notice`, `Get started`) w świeżym `DSH_HOME` trzeba zamknąć; skrypt to robi.
 - **Nie sprawdzone:** Firefox/Safari; aplikacja desktopowa; zachowanie przy wielu sesjach otwartych naraz; układ na wąskim ekranie/mobilnie; motyw jasny. Szeregi i wykresy: patrz wyżej.
 
-### Przycinanie narzędzi (wniosek dla fazy F)
-Rdzeń zgłasza `tool pruning is not available on dsh`: dostępność to `denylist.supports(host)`, czyli host z plikiem ustawień (Claude Code, Codex, Copilot). Na DSH przycinanie wymaga osobnej ścieżki zastosowania po stronie pluginu (`ctx.tools.restrict`), z propozycją liczoną przez rdzeń. Test `test_tool_pruning_is_not_applied_on_dsh_yet` przypina obecne zachowanie.
+### Przycinanie narzędzi i wywołania pomocnicze (zrobione: [ADR 0004](adr/0004-przycinanie-narzedzi-i-wywolania-pomocnicze.md))
+Wniosek z fazy B zrealizowany: rdzeń liczy propozycję, plugin stosuje `ctx.tools.restrict` przy `agent/created`; `denylist.supports("dsh")` jest prawdziwe (plik `.dsh/token-economizer.local.json`), a propozycje obejmują tylko `mcp__*`. Test na żywo (2026-11-07, `live-check.mjs`, 25/25) wykrył to, czego atrapy nie mogły: **`ctx.llm` i `ctx.tools` rzucają bez `ctx.inject`** ("cannot get property … without inject"), więc plugin pobiera je przez `inject`. Potwierdzone na żywo: `request/context` niesie `provider` i `model` (trasa sesji), `tools.schemas()` daje pełną listę (183 narzędzia w profilu `headless`), wywołanie przez `ctx.llm` zwraca tekst i zużycie, a zablokowane narzędzie znika z `request/header`.
 

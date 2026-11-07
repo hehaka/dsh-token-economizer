@@ -648,7 +648,7 @@ def copilot_call(prompt, model="", cli="copilot", timeout=TIMEOUT_S):
 
 # The command each agent's side calls run, as the notices name it; the rest run `<agent> -p`.
 _CALLS = {"codex": "codex exec", "opencode": "opencode run", "cursor": "cursor-agent -p",
-          "hermes": "hermes chat"}
+          "hermes": "hermes chat", "dsh": "DSH's model service"}
 
 
 def call_name(host_name):
@@ -677,8 +677,7 @@ def runner_for(host_name, config):
         return lambda prompt, _m="agent": codex_call(prompt, model=model)
     if host_name == "copilot":
         return lambda prompt, _m="agent": copilot_call(prompt, model=model)
-    if host_name == "dsh":
-        # DSH's calls arrive with its plugin (docs/dsh/adr/0001, phase E); until then none is
-        # made, and never through another agent's CLI.
-        return lambda prompt, _m="agent": ("", None)
+    if host_name == "dsh":      # through DSH's own model service, never another agent's CLI
+        from . import dsh_sidecall
+        return dsh_sidecall.Runner(model)
     return lambda prompt, _m="agent": claude_call(prompt, model=model or "haiku")

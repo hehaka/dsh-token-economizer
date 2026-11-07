@@ -3,11 +3,13 @@
 // only translates (the same division as the Pi extension and the Hermes plugin upstream).
 //
 //   session/created        -> SessionStart      the learned facts, kept for the session
+//   agent/created             (tool pruning)    the tool list is recorded; the core's deny list is applied
 //   system-prompt/assemble    (inject)          the facts, as one context of the system prompt
 //   session/event (prompt) -> UserPromptSubmit  opens a prompt-turn; `prompt_id` numbered here
 //   tools/post-execute     -> PostToolUse       the guard; a redirect rides back as a context
 //   agent/turn-stopping    -> Stop              closes the turn
 //   session/disposed       -> SessionEnd        hands the session to a detached fold
+//   (loopback endpoint)       the core's own model calls, answered through `ctx.llm` (sidecall.mjs)
 //
 // Only a person's own (root) sessions are followed, never a subagent's. Every handler contains
 // its failures: the plugin never changes how a session runs unless the core says so.
@@ -16,7 +18,9 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { disabled, findBootstrap, runHook } from './bridge.mjs';
 import { runTe } from './command.mjs';
+import { ENV_FILE, createSidecall } from './sidecall.mjs';
 import { Spool, parseArgs, spoolPath, textOf } from './spool.mjs';
+import { applyDeny, readDeny, toolNames, writeCatalog } from './tools.mjs';
 
 export const NAME = 'token-economizer';
 const CONTEXT_NAME = 'tokeneconomizer';
@@ -69,10 +73,42 @@ export function createPlugin(ctx, options) {
   }
   const stateRoot = config.stateRoot ?? env.TOKENECONOMIZER_HOME ?? join(homedir(), '.tokeneconomizer');
   const bootstrap = config.bootstrap ?? findBootstrap(import.meta.url);
+  // The core's own model calls (judge, proposer) are answered here, through DSH's model service.
+  // The route they run on is the session's: what the agent was created with, then what its
+  // requests logged (`request/context`).
+  let route;
+  const observeRoute = (r) => {
+    if (typeof r?.provider === 'string' && r.provider && typeof r?.model === 'string' && r.model) route = { provider: r.provider, model: r.model };
+  };
+  // `ctx.llm` and `ctx.tools` are services: reading one without `ctx.inject` throws. They are
+  // taken when they appear (a plain `inject` on the plugin would hold all of it back instead).
+  const services = {};
+  const service = (name) => {
+    if (services[name]) return services[name];
+    try {
+      return ctx[name];                                    // a context that has it already (tests)
+    } catch {
+      return undefined;
+    }
+  };
+  for (const name of ['llm', 'tools']) {
+    try {
+      if (typeof ctx.inject === 'function') {
+        ctx.inject([name], (c) => {
+          services[name] = c[name];
+          return () => { delete services[name]; };
+        });
+      }
+    } catch (err) {
+      log('warn', `${name} service unavailable: ${err?.message ?? err}`);
+    }
+  }
+  const sidecall = config.sidecall === false ? undefined : createSidecall({ llm: () => config.llm ?? service('llm'), route: () => route, stateRoot, log });
+  const hookEnv = () => (sidecall?.file ? { ...env, [ENV_FILE]: sidecall.file } : env);
   let run = config.run;
   if (!run) {
     if (!bootstrap) log('warn', 'the TokenEconomizer launcher (scripts/te_bootstrap.py) was not found: no hook will run');
-    run = (payload, cwd) => runHook(payload, { env, bootstrap, cwd });
+    run = (payload, cwd) => runHook(payload, { env: hookEnv(), bootstrap, cwd });
   }
 
   const states = new Map();
@@ -94,6 +130,7 @@ export function createPlugin(ctx, options) {
         start: undefined,
       };
       states.set(key, st);
+      sidecall?.start();                                  // the first session of this process opens the endpoint
     }
     return st;
   }
@@ -121,6 +158,7 @@ export function createPlugin(ctx, options) {
       ...extra,
     };
     try {
+      if (sidecall) await withTimeout(sidecall.start(), START_WAIT_MS);      // the endpoint's path rides on the hook's environment
       const out = await run(payload, st.cwd);
       return out && typeof out === 'object' ? out : {};
     } catch {
@@ -148,6 +186,27 @@ export function createPlugin(ctx, options) {
     }
   });
 
+  // Tool pruning. The core writes the tools a repository's sessions never use into
+  // `.dsh/token-economizer.local.json`; `restrict` hides them from this agent before its first
+  // request, so the tool list (and with it the prompt cache) never changes mid-session. A throw
+  // here would fail the agent's creation, so nothing escapes.
+  ctx.on('agent/created', ({ agent } = {}) => {
+    try {
+      const session = agent?.session;
+      if (!session || !isRoot(session)) return;
+      observeRoute(agent.options);
+      const known = toolNames(service('tools'));
+      writeCatalog(stateRoot, known);
+      if (config.applyDeny === false) return;
+      const deny = readDeny(session.header?.cwd || process.cwd());
+      if (!deny.length) return;
+      const hidden = applyDeny(agent, deny, known);
+      if (hidden.length) log('info', `tool pruning: ${hidden.length} tool(s) hidden from this session`);
+    } catch (err) {
+      log('warn', `tool pruning not applied: ${err?.message ?? err}`);
+    }
+  });
+
   ctx.on('system-prompt/assemble', async (_assembly, context, next) => {
     const resolved = await next();
     try {
@@ -169,6 +228,7 @@ export function createPlugin(ctx, options) {
     try {
       const st = stateFor(session);
       if (!st) return;
+      if (event?.type === 'request/context') observeRoute(event.data);
       ensureStarted(st);
       const rec = st.spool.record(event);
       if (rec?.kind !== 'prompt') return;
@@ -269,5 +329,5 @@ export function createPlugin(ctx, options) {
   }
 
   log('info', `active (state: ${stateRoot})`);
-  return { states, idle };
+  return { states, idle, sidecall, stop: async () => sidecall?.stop() };
 }

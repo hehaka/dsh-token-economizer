@@ -67,7 +67,8 @@ writeFileSync(join(repo, '.git', 'config'), '[remote "origin"]\n\turl = https://
 const stub = join(pkg, 'test-stub-core.py');
 writeFileSync(stub, readFileSync(join(HERE, 'stub_core.py')));
 const logFile = join(work, 'hooks.jsonl');
-const env = (state) => ({ TOKENECONOMIZER_HOME: state, CLAUDE_CONFIG_DIR: join(work, 'claude'), TE_LIVE_LOG: logFile, TE_FOLD_SYNC: '1' });
+const sideFile = join(work, 'side.jsonl');
+const env = (state) => ({ TOKENECONOMIZER_HOME: state, CLAUDE_CONFIG_DIR: join(work, 'claude'), TE_LIVE_LOG: logFile, TE_LIVE_SIDE: sideFile, TE_FOLD_SYNC: '1' });
 
 // -- 1. the entry composes into the profile tree --------------------------------------------
 const patch1 = overlay('stub', { bootstrap: stub });
@@ -115,6 +116,13 @@ const toolSeq = seqOf((e) => e.type === 'tool/result');
 const noteSeq = seqOf((e) => e.type === 'user/message' && e.data?.source?.kind === 'token-economizer');
 const lastAnswer = [...events].reverse().find((e) => e.type === 'assistant/message')?.seq;
 check('the note follows the tool result and precedes the next answer', toolSeq < noteSeq && noteSeq < lastAnswer, `tool ${toolSeq} < note ${noteSeq} < answer ${lastAnswer}`);
+// The core's own model call (docs/dsh/adr/0004): the stub core makes one through the endpoint the
+// plugin put in the hook's environment, after the tool result (when a request has named a route).
+const side = jsonl(sideFile);
+const sc = side.find((x) => x.reply || x.error);
+check('the hook\'s environment names the side-call endpoint', side.length > 0 && side.every((x) => x.endpoint_env), `${side.length} call(s)`);
+check('a side call through the endpoint returns text and token usage', Boolean(sc?.reply?.text) && Number.isFinite(sc.reply.usage?.input_tokens), sc?.error ?? `${JSON.stringify(sc?.reply ?? {}).slice(0, 200)}`);
+check('the side call ran on the session\'s route (a model is named)', typeof sc?.reply?.model === 'string' && sc.reply.model.length > 0, sc?.reply?.model ?? '');
 const answer = r1.stdout || '';
 info('the model reported the facts', /FACTS=TE-LIVE-FACTS-7f3a/.test(answer));
 info('the model reported the note', /REDIRECT=TE-LIVE-REDIRECT-91bc/.test(answer));
@@ -144,8 +152,33 @@ const ran = Object.fromEntries(lines.filter((l) => l.startsWith('{')).map((l) =>
 let status;
 try { status = JSON.parse(ran['/te status --json']?.text ?? ''); } catch { status = undefined; }
 check('/te status --json answers for the session\'s repository (host dsh)', ran['/te status --json']?.kind === 'success' && status?.host === 'dsh' && status?.repo === 'acme/widget');
-check('/te toolprune show says it is not available on dsh', ran['/te toolprune show']?.kind === 'error' && /not available on dsh/.test(ran['/te toolprune show']?.text ?? ''), (ran['/te toolprune show']?.text ?? '').slice(0, 80));
+check('/te toolprune show answers on dsh', ran['/te toolprune show']?.kind === 'success' && !/not available/.test(ran['/te toolprune show']?.text ?? ''), (ran['/te toolprune show']?.text ?? '').slice(0, 80));
 check('/te refuses the core\'s background commands', ran['/te fold --session x']?.kind === 'error' && /Unknown command/.test(ran['/te fold --session x']?.text ?? ''));
+
+// -- 5. tool pruning: the deny list hides a tool from the model's request ----------------------
+const sessionTools = (sessionId) => {
+  const root = join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'sessions');
+  const f = existsSync(root) ? readdirSync(root).map((d) => join(root, d, sessionId, 'session.v4.jsonl.zstd')).find(existsSync) : undefined;
+  const header = f ? readLog(f).find((e) => e.type === 'request/header') : undefined;
+  return header?.data?.header?.tools?.map((t) => t.name);
+};
+const catalogFile = join(state2, 'hosts', 'dsh', 'catalog.json');
+const catalog = existsSync(catalogFile) ? JSON.parse(readFileSync(catalogFile, 'utf8')).tools : [];
+check('the plugin recorded the tool list DSH offers (catalog.json)', Array.isArray(catalog) && catalog.length > 5 && catalog.includes('bash'), `${catalog.length} tools`);
+const spoolOf = (state) => readdirSync(join(state, 'dsh-sessions')).map((n) => n.replace(/\.jsonl$/, ''));
+const base = spoolOf(state2).map(sessionTools).find(Boolean) ?? [];
+const victim = ['read_image', 'present', 'send_message', 'glob'].find((n) => base.includes(n) && catalog.includes(n));
+check('a request\'s tool list is readable from the session log, to compare', base.length > 0 && Boolean(victim), `${base.length} tools in the request; victim ${victim}`);
+if (victim) {
+  mkdirSync(join(repo, '.dsh'), { recursive: true });
+  writeFileSync(join(repo, '.dsh', 'token-economizer.local.json'), JSON.stringify({ tokeneconomizer: { deny: [victim, 'mcp__not__installed'] } }));
+  const state4 = join(work, 'state4');
+  const r4 = dsh(['--profile', profile, '--patch', patch2, 'Reply with the single word ok'], env(state4), 240_000);
+  check('the run with a deny list finished (an unknown name did not break it)', r4.status === 0, `exit ${r4.status}`);
+  const denied = existsSync(join(state4, 'dsh-sessions')) ? spoolOf(state4).map(sessionTools).find(Boolean) ?? [] : [];
+  check('the denied tool is gone from the model\'s request, the others stay', denied.length > 0 && !denied.includes(victim) && denied.includes('bash'), `${denied.length} tools (baseline ${base.length})`);
+  rmSync(join(repo, '.dsh'), { recursive: true, force: true });
+}
 
 const failed = checks.filter((c) => !c.ok).length;
 console.log(`\n${checks.length - failed}/${checks.length} passed. Work directory: ${work}`);

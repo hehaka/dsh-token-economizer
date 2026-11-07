@@ -55,6 +55,10 @@ COPILOT_PROTECTED = frozenset({
     "read_agent", "list_agents", "write_agent", "ask_user", "web_fetch", "web_search",
     "report_intent", "update_todo", "sql",
 })
+# DSH names its tools in lower case, so the sets above protect none of them. Only an MCP server's
+# tools (`mcp__<server>__<tool>`) may be proposed there: these patterns protect every other name
+# (fnmatch has no negation, so they spell out "does not start with mcp__").
+DSH_PROTECTED = ("[!m]*", "m[!c]*", "mc[!p]*", "mcp[!_]*", "mcp_[!_]*", "m", "mc", "mcp", "mcp_")
 # Rarely used, but expensive to lose when a task needs them: proposed only after
 # HIGH_RISK_FACTOR times the usual evidence.
 HIGH_RISK = frozenset({"NotebookEdit"})
@@ -143,7 +147,8 @@ class LiveAdapter:
     # ---- tool pruning ----
     def protected_tools(self):
         extra = COPILOT_PROTECTED if self.host.name == "copilot" else frozenset()
-        return _Protected(PROTECTED_TOOLS | INTERACTIVE_PROTECTED | extra, self.protect)
+        patterns = self.protect + (DSH_PROTECTED if self.host.name == "dsh" else ())
+        return _Protected(PROTECTED_TOOLS | INTERACTIVE_PROTECTED | extra, patterns)
 
     def inapplicable_tools(self):
         return ()                       # nothing is inapplicable by construction here

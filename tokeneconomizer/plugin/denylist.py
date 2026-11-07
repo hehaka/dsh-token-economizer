@@ -53,8 +53,11 @@ SETTINGS_REL = os.path.join(".claude", "settings.local.json")
 CODEX_CONFIG_REL = os.path.join(".codex", "config.toml")
 COPILOT_SETTINGS_REL = os.path.join(".github", "copilot", "settings.local.json")
 
-_SETTINGS = {"claude": SETTINGS_REL, "codex": CODEX_CONFIG_REL, "copilot": COPILOT_SETTINGS_REL}
-_UNITS = {"claude": "tool", "codex": "capability", "copilot": "MCP server"}
+DSH_SETTINGS_REL = os.path.join(".dsh", "token-economizer.local.json")   # read by plugin/dsh
+
+_SETTINGS = {"claude": SETTINGS_REL, "codex": CODEX_CONFIG_REL, "copilot": COPILOT_SETTINGS_REL,
+             "dsh": DSH_SETTINGS_REL}
+_UNITS = {"claude": "tool", "codex": "capability", "copilot": "MCP server", "dsh": "tool"}
 
 # Codex capability -> (table or None for top level, key, TOML value). Each probed project-local
 # on 0.153.1 (see the module docstring); `te_harness.codex` holds the launch-time superset.
@@ -238,7 +241,8 @@ def _record(store, items, path):
 
 # ---- the JSON-list hosts: Claude Code's deny rules, Copilot's disabled MCP servers -------
 def _json_list_keys(host):
-    return ("permissions", "deny") if host == "claude" else (None, "disabledMcpServers")
+    return {"claude": ("permissions", "deny"), "dsh": ("tokeneconomizer", "deny")}.get(
+        host, (None, "disabledMcpServers"))
 
 
 def _apply_json_list(repo_root, items, store, host):

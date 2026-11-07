@@ -110,12 +110,6 @@ def test_side_calls_never_go_through_another_agent(monkeypatch):
     assert runner("anything") == ("", None)
 
 
-def test_tool_pruning_is_not_applied_on_dsh_yet():
-    # Until the DSH plugin can apply a deny list (phase F), nothing may be written to another
-    # agent's settings file on its behalf.
-    assert not denylist.supports("dsh")
-
-
 def test_a_dsh_session_folds_into_the_ledger(tmp_path, dsh_env):
     repo, env, store = dsh_env
     log, calls = spool(str(tmp_path / "dsh-1.jsonl"), repo)
