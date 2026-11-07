@@ -8,14 +8,16 @@
  "base": "9b892dd",
  "max_iterations": 18,
  "budget": 180,
- "calls": 22,
+ "calls": 23,
  "iteration": 8,
  "open": {
   "k": 8,
   "item": "T8",
   "fix_rounds": 0,
   "start": "349884f",
-  "notes": []
+  "notes": [
+   "T8: reviews A (sol) and B (mai) triaged; fixes A and B committed; report docs/reviews/2026-11-07-dsh-prune-sidecall.md"
+  ]
  },
  "items": [
   {
@@ -359,7 +361,8 @@
   "T3: live-sidecall redactor also masks the key cache_creation_input_tokens in printed replies (cosmetic)",
   "multi-session in one DSH process: the route is process-global (last observed), the endpoint cannot tell which session a core call belongs to; a call could run on another session's model. Needs the session id on the request (core Runner change) - out of plan",
   "proxy unwrap (tool_call) is unit-tested only: the headless profile exposes no tool_call tool, so the live prune loop could not exercise it",
-  "T7: panel.py passes a damaged sidecall.json through unvalidated (types, length); model.cjs shows malformed side.paused as active; reason (provider error text, <=300 chars from the core) shown 120 chars in UI"
+  "T7: panel.py passes a damaged sidecall.json through unvalidated (types, length); model.cjs shows malformed side.paused as active; reason (provider error text, <=300 chars from the core) shown 120 chars in UI",
+  "T8: PTC (run_code) sessions may hide MCP tool use from the spool; panel/pause file shape validation; Python _usage NaN/negative hardening"
  ],
  "stop": "",
  "goal": {

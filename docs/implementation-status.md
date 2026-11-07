@@ -7,7 +7,7 @@
 - base commit: 9b892dd
 - DoD: docs/dod.md, frozen sha256 b763c64898e3d5cbaa2b97b53ff6daee318ab08bcb3f8dbd7590d1acd405b0d9
 - iteration: 8 / 18
-- subagent calls: 22 / 180
+- subagent calls: 23 / 180
 - last commit: f2c2d59
 - open iteration: 8, item T8, fix rounds 0, started at 349884f
 - goal: goal-cd2e4c05-0c18-4e76-ab00-084d5e002fb9, active
@@ -73,3 +73,4 @@ RESULT: FAIL (1 of 12 command criteria failed) (iteration 7, report docs/iterati
 - multi-session in one DSH process: the route is process-global (last observed), the endpoint cannot tell which session a core call belongs to; a call could run on another session's model. Needs the session id on the request (core Runner change) - out of plan
 - proxy unwrap (tool_call) is unit-tested only: the headless profile exposes no tool_call tool, so the live prune loop could not exercise it
 - T7: panel.py passes a damaged sidecall.json through unvalidated (types, length); model.cjs shows malformed side.paused as active; reason (provider error text, <=300 chars from the core) shown 120 chars in UI
+- T8: PTC (run_code) sessions may hide MCP tool use from the spool; panel/pause file shape validation; Python _usage NaN/negative hardening
