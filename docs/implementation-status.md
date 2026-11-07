@@ -36,12 +36,12 @@ RESULT: FAIL (1 of 10 command criteria failed) (iteration 6, report docs/iterati
 | T2 | behaviour | must | D1,D2,D6,D7 | T1 | done | 2 | 7df5354 | plan T2: live-multisession.mjs models/resume |
 | T3 | behaviour | must | D3,D6,D7 | T1 | done | 3 | ed1d4f9 | plan T3: live-proxy.mjs |
 | T4 | behaviour | must | D4,D6,D7,D8 | T1 | done | 4 | 9262f92 | plan T4: live-ptc.mjs and fix if needed |
-| T5 | behaviour | must | D5,D6,D7 | T1 | blocked | - | - | plan T5: live-tui.mjs |
+| T5 | behaviour | must | D5,D6,D7 | T1 | dropped | - | - | plan T5: live-tui.mjs |
 | T6 | other | must | D9,D10 | T2,T3,T4,T5 | done | 5 | e1f66b7 | plan T6: review of production fixes of this run |
 | T7 | other | must | D6,D7,D8,D9,D11 | T6 | done | 6 | 3ac4c43 | plan T7: docs, full tests, budget, push |
 
 ## Blocked
-- T5: this dsh install has no TUI: 'dsh tui' fails with 'profile tui does not exist'; profiles are acp, web, headless, sdk, sdk-minimal (docs/iterations/1-spike.md Q5). Hypotheses: none. Question: Czy D5 (TUI na żywo) ma zostać usunięte z DoD jako niewykonalne w tym środowisku, czy mam zainstalować społecznościowy pakiet TUI z npm (poza planem)?
+(none)
 
 ## Last 10 iterations (full log: docs/iterations/log.md)
 - it1 T1: done, commit 4217a8c, fix rounds 0
@@ -56,6 +56,7 @@ RESULT: FAIL (1 of 10 command criteria failed) (iteration 6, report docs/iterati
 - it1: Watch item for T2: before a web session's first request the route is agent.options (profile default), not the model chosen by session/selectModel. Why: spike Q1: endpoint reply for B said haiku after selectModel(sonnet) until the first request. T2 measures it, and fixes it only if DSH emits an event carrying the selection; otherwise it is documented as a limit (the call runs on the default model, never on another session's).
 - it1: T4 fix direction for PTC: the spool must not make a tool used from run_code look unused. Why: spike Q4: spool has only the run_code block, but PostToolUse reached the plugin for the nested bash first; the core would see an MCP tool used only through the SDK as never used and propose denying it.
 - it4: T4: test 7 of spool-ptc.test.mjs corrected to [true,true,true]. Why: the test (written by us in step 2a) mis-read the core's claude_calls tuple: field 4 is success (not is_error), verified in tokeneconomizer/trace/claude.py; every call in that fixture succeeded. Not a weakened guard: the test was wrong, and the assertion keeps its strength.
+- it6: D5 (live TUI) accepted as not met, by the user's decision on 2026-11-07; T5 dropped. Why: the user answered the End question 'Usunąć D5 z DoD i zamknąć cel': this DSH install has no TUI (dsh tui: profile tui does not exist). docs/dod.md stays frozen (hash unchanged); D5 is recorded here as an accepted exception, so the other 9 command criteria D1-D4, D6-D10 are the exit condition. Rejected: installing a community TUI package (outside the plan); leaving the goal open.
 
 ## Deferred
 - known limit: in dsh web, after session/selectModel and before the session's first request the endpoint answers a call for that session on the profile default model (agent.options), not on the selected model; never another session's route (live-multisession (f)). Fix needs a DSH event carrying the selection; not found in the spike

@@ -103,7 +103,7 @@
    "deps": [
     "T1"
    ],
-   "status": "blocked",
+   "status": "dropped",
    "iteration": null,
    "commit": null,
    "hypotheses": [],
@@ -256,6 +256,12 @@
    "what": "T4: test 7 of spool-ptc.test.mjs corrected to [true,true,true]",
    "why": "the test (written by us in step 2a) mis-read the core's claude_calls tuple: field 4 is success (not is_error), verified in tokeneconomizer/trace/claude.py; every call in that fixture succeeded. Not a weakened guard: the test was wrong, and the assertion keeps its strength",
    "rejected": ""
+  },
+  {
+   "iteration": 6,
+   "what": "D5 (live TUI) accepted as not met, by the user's decision on 2026-11-07; T5 dropped",
+   "why": "the user answered the End question 'Usunąć D5 z DoD i zamknąć cel': this DSH install has no TUI (dsh tui: profile tui does not exist). docs/dod.md stays frozen (hash unchanged); D5 is recorded here as an accepted exception, so the other 9 command criteria D1-D4, D6-D10 are the exit condition",
+   "rejected": "installing a community TUI package (outside the plan); leaving the goal open"
   }
  ],
  "deferred": [

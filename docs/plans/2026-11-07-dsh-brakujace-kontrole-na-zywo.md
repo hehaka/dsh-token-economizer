@@ -54,3 +54,6 @@ Brak (każdy task obsługuje kryterium).
 - [x] DoD zatwierdzone przez użytkownika.
 - [x] `descriptive` tylko D11; są kryteria `command` i liczby testów (D7, D8).
 - [x] Pod tabelą DoD jest linia `DoD approved: <data>`.
+
+## Zmiana po zatwierdzeniu (decyzja użytkownika, 2026-11-07)
+D5 (TUI na żywo) i task T5 zostały odrzucone: ten DSH nie ma TUI (`dsh tui`: profile "tui" does not exist; profile: acp, web, headless, sdk, sdk-minimal). `docs/dod.md` pozostał zamrożony; D5 jest zapisane jako przyjęty wyjątek w `docs/iterations/decisions.md`. Interaktywność pokrywa `dsh web` + Chrome (`browser-check.mjs --prune`, `live-multisession.mjs`).
