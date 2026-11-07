@@ -40,6 +40,9 @@ export function makeChecker() {
 // The last few lines of a dsh stderr that say what went wrong.
 export const tail = (t) => String(t || '').split('\n').filter((l) => /dsh:|Error|error/.test(l)).slice(-5).join('\n');
 
+/** Best-effort scrub of provider-supplied text before printing: 200 chars, long token-like runs hidden. */
+export const redact = (v) => String(v ?? '').slice(0, 200).replace(/[A-Za-z0-9_-]{24,}/g, '<redacted>');
+
 export const jsonl = (f) => (existsSync(f) ? readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
 
 // -- environment and workspace ---------------------------------------------------------------

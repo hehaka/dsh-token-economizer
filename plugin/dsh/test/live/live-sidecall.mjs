@@ -28,7 +28,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   HERE, REPO, arg, dsh as runDsh, fakeGitRepo, jsonl, loadProfileEnv, makeChecker, overlay as makeOverlay,
-  prepareWork, readSessionEvents, sessionLogFile, tail,
+  prepareWork, readSessionEvents, redact, sessionLogFile, tail,
 } from './common.mjs';
 
 const USAGE = 'usage: node plugin/dsh/test/live/live-sidecall.mjs [--profile headless] [--only paid|route] [--paid-a provider/model] [--paid-b model]';
@@ -50,9 +50,6 @@ const profile = arg('--profile', 'headless');
 const paidA = arg('--paid-a', 'azure-openai-responses/gpt-6-luna');
 const paidB = arg('--paid-b', 'claude-sonnet-5-5');
 const { check, summary } = makeChecker();
-
-/** Best-effort scrub of provider-supplied text before printing: 200 chars, long token-like runs hidden. */
-const redact = (v) => String(v ?? '').slice(0, 200).replace(/[A-Za-z0-9_-]{24,}/g, '<redacted>');
 
 async function paidGroup() {
   loadProfileEnv(profile);

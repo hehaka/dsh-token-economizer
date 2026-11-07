@@ -8,9 +8,17 @@
  "base": "9b892dd",
  "max_iterations": 18,
  "budget": 180,
- "calls": 7,
- "iteration": 3,
- "open": null,
+ "calls": 10,
+ "iteration": 4,
+ "open": {
+  "k": 4,
+  "item": "T2",
+  "fix_rounds": 0,
+  "start": "ba75d30",
+  "notes": [
+   "T2: live-prune-loop 15/15 re-run by orchestrator; mutation (applyDeny always off) -> 2 FAIL; review deferred to T8"
+  ]
+ },
  "items": [
   {
    "id": "T1",
@@ -329,7 +337,8 @@
  ],
  "deferred": [
   "T3: live-sidecall redactor also masks the key cache_creation_input_tokens in printed replies (cosmetic)",
-  "multi-session in one DSH process: the route is process-global (last observed), the endpoint cannot tell which session a core call belongs to; a call could run on another session's model. Needs the session id on the request (core Runner change) - out of plan"
+  "multi-session in one DSH process: the route is process-global (last observed), the endpoint cannot tell which session a core call belongs to; a call could run on another session's model. Needs the session id on the request (core Runner change) - out of plan",
+  "proxy unwrap (tool_call) is unit-tested only: the headless profile exposes no tool_call tool, so the live prune loop could not exercise it"
  ],
  "stop": "",
  "goal": {
