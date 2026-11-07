@@ -1,6 +1,6 @@
 # ADR 0004 — Przycinanie narzędzi i wywołania pomocnicze modelu na DSH
 
-Status: przyjęty i zweryfikowany na żywym `dsh headless` (2026-11-07). Plan i kryteria: [`docs/plans/2026-11-07-dsh-przycinanie-i-wywolania-pomocnicze.md`](../../plans/2026-11-07-dsh-przycinanie-i-wywolania-pomocnicze.md). Domyka dwa braki z [ADR 0001](0001-integracja-z-tokeneconomizer.md) (faza E) i `spike-phase-b.md`.
+Status: przyjęty i zweryfikowany na żywym `dsh headless` i `dsh web` (2026-11-07), z limitami w „Weryfikacja”. Plan i kryteria: [`docs/plans/2026-11-07-dsh-przycinanie-i-wywolania-pomocnicze.md`](../../plans/2026-11-07-dsh-przycinanie-i-wywolania-pomocnicze.md). Domyka dwa braki z [ADR 0001](0001-integracja-z-tokeneconomizer.md) (faza E) i `spike-phase-b.md`.
 
 ## Przycinanie narzędzi
 **Podział pracy.** Rdzeń decyduje (dowody → propozycja → `auto`/`propose`), plugin tylko wykonuje. Rdzeń zapisuje listę w `.dsh/token-economizer.local.json` pod `tokeneconomizer.deny` — tym samym kodem co pliki ustawień Claude Code/Codex/Copilot (`denylist.apply/restore`, wpis w `.git/info/exclude` tylko dla pliku utworzonego przez plugin, odmowa przy dowiązaniu symbolicznym katalogu `.dsh`). Plugin czyta ten plik przy `agent/created` i wywołuje `agent.ctx.tools.restrict({deny})` **przed pierwszym zapytaniem**, więc lista narzędzi (a z nią cache promptu) nie zmienia się w trakcie sesji.
@@ -27,4 +27,24 @@ Sędzia pętli, autor uwag i propozycje mikro-umiejętności działają w Python
 Narzędzia wbudowane DSH w propozycjach; nazwane potoki Windows (loopback TCP działa wszędzie); wyświetlanie propozycji w `systemMessage` przy starcie; pomiar skutku (`CLAUDE.md`: brak twierdzeń o efekcie).
 
 ## Weryfikacja
-Python: `tests/test_dsh_toolprune.py`, `tests/test_dsh_sidecall.py` (w tym sędzia pętli na punkcie końcowym i księgowanie). Node: `test/tools.test.mjs`, `test/sidecall.test.mjs`, `test/sidecall.e2e.test.mjs` (prawdziwy serwer + prawdziwy Python, atrapa `ctx.llm`). Testy mutacyjne ręczne (usunięcie kontroli → test pada) dla obu części. **Na żywo** (`test/live/live-check.mjs`, 25/25): wywołanie przez punkt końcowy zwróciło tekst i wycenialne zużycie na modelu sesji; narzędzie z listy odmów zniknęło z `request/header` (183 → 182), a nieznana nazwa nie zepsuła uruchomienia. **Nie sprawdzone na żywo:** `paid_model` (tylko testy), tryby interaktywne, wiele sesji naraz na prawdziwych modelach (trasa per sesja: tylko testy z atrapą `ctx.llm`), skuteczność samego przycinania (pomiar poza zakresem).
+Python: `tests/test_dsh_toolprune.py`, `tests/test_dsh_sidecall.py` (w tym sędzia pętli na punkcie końcowym i księgowanie). Node: `test/tools.test.mjs`, `test/sidecall.test.mjs`, `test/sidecall.e2e.test.mjs` (prawdziwy serwer + prawdziwy Python, atrapa `ctx.llm`). Testy mutacyjne ręczne (usunięcie kontroli → test pada) dla obu części. **Na żywo** (2026-11-07, prawdziwy model, szczegóły i błędy w [`spike-phase-b.md`](../spike-phase-b.md), sekcja „Domknięcie weryfikacji”):
+- `live-check.mjs` 25/25: wywołanie przez punkt końcowy zwróciło tekst i wycenialne zużycie na modelu sesji; narzędzie z listy odmów zniknęło z `request/header` (183 → 182), nieznana nazwa nie zepsuła uruchomienia.
+- `live-sidecall.mjs` 20/20: `paid_model` w trzech wariantach (trasa sesji `anthropic/claude-haiku-5-5`, jawny `azure-openai-responses/gpt-6-luna`, sam model u dostawcy sesji) — wszystkie z wycenianym zużyciem.
+- `live-prune-loop.mjs` 15/15: prawdziwy rdzeń, tryb `auto`; po pierwszej zakończonej sesji plik odmów z 153 nazwami `mcp__*` (katalog 154 minus 1 użyta), `bash` i użyte narzędzie poza listą, kolejne sesje zachowują listę; zapytanie sesji kontrolnej: 30 narzędzi wobec 183 w pierwszej.
+- `live-sessions.mjs` 34/34: subagent nie podlega liście odmów, nie jest spoolowany ani składany jak sesja główna i nie otwiera drugiego punktu końcowego (potwierdza „subagenci nie są ograniczani”); dwa procesy w jednym katalogu stanu mają osobne pliki (po pid) i oba odpowiadają; SIGTERM kończy DSH czysto i usuwa plik; nieaktualny plik punktu końcowego daje `("", None)` w ~0,03 s i jest sprzątany przez następny proces.
+- `client/test/browser/browser-check.mjs --prune` 24/24: prawdziwy Chrome przeciw `dsh web`; lista odmów zastosowana, jeden plik punktu końcowego, wywołanie przez niego na modelu sesji, wiersze panelu („Model calls”, szczegół przycinania) zgodne z `te status --json`. `te panel --json` niesie `side` = `{paused, host}`.
+- Trasa przed pierwszym zapytaniem: wywołanie rdzenia przy `SessionStart` udało się na trasie sesji w każdym przebiegu na żywo (hook to osobny proces, `agent/created` ustawił trasę wcześniej).
+
+**Błędy znalezione na żywo:** (1) na `dsh web` lista odmów nigdy nie była stosowana, bo `tools.schemas()` bez zakresu zwracało tylko `working_directory` → `schemas(agent)`; (2) trzy kolejne prawdziwe wywołania modelu w jednym hooku przekraczają 20 s limit mostu → atrapa rdzenia robi jeden wariant na hook. Poprawki z przeglądu (`docs/reviews/2026-11-07-dsh-prune-sidecall.md`) opisują sekcje wyżej.
+
+**Nie sprawdzone / limity:**
+- dwie sesje na różnych modelach w jednym procesie: testy z atrapą `ctx.llm`, nie na żywo;
+- brak trasy (`409 NO_ROUTE`, rdzeń: „brak odpowiedzi”, bez pauzy i księgowania): przypięte testami (Node, Python, atrapa), na żywo nieobserwowane (wyścig);
+- proxy `tool_call` (`unproxy`): tylko testy jednostkowe (profil headless nie ma tego narzędzia);
+- sesje PTC (`run_code`) mogą ukrywać użycie narzędzi MCP przed spoolem (niezweryfikowane);
+- aplikacja desktopowa, Firefox/Safari, interaktywne TUI; `dsh web` tylko przez headless Chrome, jeden prompt na przebieg;
+- sesja wznowiona lub ze zmienionym modelem: trasa z `agent/created` i `request/context`, bieżący model może różnić się od domyślnego profilu;
+- rozliczenie tokenów rozumowania (czy `outputTokens` je obejmuje);
+- skuteczność samego przycinania (pomiar poza zakresem; obserwowane są tylko liczby narzędzi w zapytaniu).
+
+**Odroczone z przeglądu:** uszkodzony `sidecall.json` trafia do panelu bez walidacji; Python `_usage` przyjmuje NaN i wartości ujemne (JS czyści je przed księgą); `llm_nudge_writer` z upstreamu księguje 0 dla pustej odpowiedzi; `te toolprune apply NAZWA` na dsh nie odmawia nazw chronionych (upstreamowy `cli.py`).

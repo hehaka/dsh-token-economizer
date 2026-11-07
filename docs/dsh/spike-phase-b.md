@@ -96,3 +96,34 @@ Decyzje: [ADR 0003](adr/0003-czesc-wizualna.md). Sprawdzone w **prawdziwej przeg
 ### Przycinanie narzędzi i wywołania pomocnicze (zrobione: [ADR 0004](adr/0004-przycinanie-narzedzi-i-wywolania-pomocnicze.md))
 Wniosek z fazy B zrealizowany: rdzeń liczy propozycję, plugin stosuje `ctx.tools.restrict` przy `agent/created`; `denylist.supports("dsh")` jest prawdziwe (plik `.dsh/token-economizer.local.json`), a propozycje obejmują tylko `mcp__*`. Test na żywo (2026-11-07, `live-check.mjs`, 25/25) wykrył to, czego atrapy nie mogły: **`ctx.llm` i `ctx.tools` rzucają bez `ctx.inject`** ("cannot get property … without inject"), więc plugin pobiera je przez `inject`. Potwierdzone na żywo: `request/context` niesie `provider` i `model` (trasa sesji), `tools.schemas()` daje pełną listę (183 narzędzia w profilu `headless`), wywołanie przez `ctx.llm` zwraca tekst i zużycie, a zablokowane narzędzie znika z `request/header`.
 
+
+### Domknięcie weryfikacji (2026-11-07)
+Plan: [`docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md`](../plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md); decyzje i limity: [ADR 0004](adr/0004-przycinanie-narzedzi-i-wywolania-pomocnicze.md). Skrypty: `plugin/dsh/test/live/` i `client/test/browser/browser-check.mjs`; raporty w `docs/iterations/`, przegląd w `docs/reviews/2026-11-07-dsh-prune-sidecall.md`. Prawdziwy model, nakładka `--patch`, izolowany stan.
+
+**Sprawdzone na żywo:**
+- `live-check.mjs` — 25/25 (regresja).
+- `live-sidecall.mjs` — 20/20: `paid_model` w trzech wariantach (domyślna trasa sesji `anthropic/claude-haiku-5-5`; jawny `azure-openai-responses/gpt-6-luna`; sam model u dostawcy sesji) — każdy odpowiedział z wycenianym zużyciem; grupa `route`.
+- `live-prune-loop.mjs` — 15/15: prawdziwy rdzeń, tryb `auto`. Po **pierwszej** zakończonej sesji rdzeń zapisał `.dsh/token-economizer.local.json` z 153 nazwami `mcp__*` (katalog 154 `mcp__*` minus 1 użyta); `bash` i użyte narzędzie poza listą; kolejne sesje zachowują listę. Zapytanie sesji kontrolnej miało 30 narzędzi wobec 183 w pierwszej (0 z 153 zablokowanych obecnych).
+- `live-sessions.mjs` — 34/34: subagent **nie** podlega liście odmów (miał narzędzie `read_image`, którego korzeń nie miał), nie jest spoolowany ani składany jak sesja główna i nie otworzył drugiego punktu końcowego; dwa równoległe procesy `dsh` na jednym katalogu stanu mają osobne pliki punktu końcowego (nazwane pid) i oba odpowiadają; SIGTERM — DSH kończy czysto i usuwa swój plik; sfabrykowany nieaktualny plik punktu końcowego: prawdziwy runner zwraca `("", None)` w ~0,03 s, a następny proces go sprząta.
+- `browser-check.mjs --prune [--only prune|panel]` — 24/24, prawdziwy model w prawdziwym Chrome przeciw `dsh web`: lista odmów zastosowana, jeden plik punktu końcowego, wywołanie przez niego odpowiedziane na modelu sesji, wiersze panelu „Model calls: active” i szczegół przycinania zgodne z `te status --json`. `te panel --json` ma pole `side` = `{paused, host}`; klient pokazuje wiersz „Model calls” (active/paused/unknown, stan jako tekst) i linię szczegółu przycinania (zastosowane, zaproponowane, źródło katalogu).
+- Trasa przed pierwszym zapytaniem: wywołanie rdzenia przy `SessionStart` powiodło się na trasie sesji w każdym przebiegu na żywo (hook jest osobnym procesem, a `agent/created` ustawił trasę wcześniej). `agent.options.provider/model` są ustawione przy `agent/created` ([spike](../iterations/3-spike.md)); `session/created` przychodzi ~55 ms wcześniej.
+
+**Błędy znalezione na żywo, naprawione:**
+1. Na `dsh web` lista odmów nigdy nie była stosowana: `tools.schemas()` bez zakresu zwracało tylko `working_directory` (narzędzia modelu są w płaszczyźnie agenta), więc katalog był równie mały → teraz `schemas(agent)`.
+2. Trzy kolejne prawdziwe wywołania modelu w jednym hooku przekraczają 20 s limit mostu → atrapa rdzenia wykonuje jeden wariant na hook.
+Poprawki z przeglądu: trasa per sesja (`TE_DSH_SESSION`), plik punktu końcowego nigdy nie podąża za dowiązaniem, limit ciała w bajtach, termin wolnego ciała, oczyszczanie błędów dostawcy, pauza tylko dla błędów uwierzytelnienia dostawcy, zapasowe `restrict` per nazwa, plik odmów czytany z korzenia repo (najbliższe `.git`), katalog per repo (`hosts/dsh/catalogs/`), walidacja kształtu pliku ustawień, stany panelu.
+
+**Liczby:** różnica względem plików upstreamu 46 z 60 linii (`scripts/dsh_diff_budget.py`, mierzy stan zatwierdzony). Testy: `npm test` 152, pytest 1287 wyników (z testami dsh); `docs/dod.md` D1–D13 PASS (D11 opisowe = ten dokument).
+
+**Nie sprawdzone / limity:**
+- dwie sesje na **różnych** modelach w jednym procesie: testy wtyczki z atrapą `ctx.llm`, nie na żywo;
+- proxy `tool_call` (`unproxy`): tylko testy jednostkowe, bo profil headless nie ma narzędzia `tool_call`;
+- sesje PTC (`run_code`) mogą ukrywać użycie narzędzi MCP przed spoolem (niezweryfikowane);
+- aplikacja desktopowa, Firefox/Safari, interaktywne TUI;
+- sesja wznowiona lub ze zmienionym modelem: trasa pochodzi z `agent/created` i `request/context`, bieżący model sesji może różnić się od domyślnego modelu profilu;
+- rozliczenie tokenów rozumowania (czy `outputTokens` je zawiera — nieustalone);
+- `dsh web` sterowany headless Chrome, jeden prompt na przebieg, nie długimi sesjami;
+- brak trasy (`409 NO_ROUTE`, rdzeń traktuje to jako brak odpowiedzi: bez pauzy, nic nie księgowane): przypięte testami (Node, Python, atrapa), na żywo **nieobserwowane** — to wyścig;
+- skuteczność przycinania nie jest mierzona: obserwacje to liczby narzędzi w zapytaniu, trasy i wiersze księgi.
+
+**Odroczone z przeglądu:** uszkodzony `sidecall.json` trafia do panelu bez walidacji; Python `_usage` przyjmuje NaN i wartości ujemne (JS czyści je przed księgą); mechanizm `llm_nudge_writer` z upstreamu księguje 0 dla pustej odpowiedzi; `te toolprune apply NAZWA` na dsh nie odmawia nazw chronionych (upstreamowy `cli.py`).

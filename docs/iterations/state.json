@@ -8,9 +8,15 @@
  "base": "9b892dd",
  "max_iterations": 18,
  "budget": 180,
- "calls": 23,
- "iteration": 8,
- "open": null,
+ "calls": 25,
+ "iteration": 9,
+ "open": {
+  "k": 9,
+  "item": "T9",
+  "fix_rounds": 0,
+  "start": "3c68d5b",
+  "notes": []
+ },
  "items": [
   {
    "id": "T1",
