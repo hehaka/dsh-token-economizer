@@ -10,15 +10,7 @@
  "budget": 180,
  "calls": 10,
  "iteration": 4,
- "open": {
-  "k": 4,
-  "item": "T2",
-  "fix_rounds": 0,
-  "start": "ba75d30",
-  "notes": [
-   "T2: live-prune-loop 15/15 re-run by orchestrator; mutation (applyDeny always off) -> 2 FAIL; review deferred to T8"
-  ]
- },
+ "open": null,
  "items": [
   {
    "id": "T1",
@@ -85,9 +77,9 @@
    "deps": [
     "T1"
    ],
-   "status": "open",
-   "iteration": null,
-   "commit": null,
+   "status": "done",
+   "iteration": 4,
+   "commit": "d2263dd",
    "hypotheses": [],
    "block": null
   },
@@ -196,88 +188,89 @@
  "dod": {
   "D1": {
    "verification": "command",
-   "status": "fail",
-   "evidence": "exit 1: Node.js v22.23.2",
-   "iteration": 3
+   "status": "pass",
+   "evidence": "exit 0: 15/15 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-prune",
+   "iteration": 4
   },
   "D2": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 13/13 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sidecall",
-   "iteration": 3
+   "iteration": 4
   },
   "D3": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 7/7 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-route",
-   "iteration": 3
+   "iteration": 4
   },
   "D4": {
    "verification": "command",
    "status": "fail",
    "evidence": "exit 1: Node.js v22.23.2",
-   "iteration": 3
+   "iteration": 4
   },
   "D5": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 4/4 checks passed",
-   "iteration": 3
+   "iteration": 4
   },
   "D6": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: no output",
-   "iteration": 3
+   "iteration": 4
   },
   "D7": {
    "verification": "command",
    "status": "fail",
    "evidence": "exit 1: no output",
-   "iteration": 3
+   "iteration": 4
   },
   "D8": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 25/25 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live",
-   "iteration": 3
+   "iteration": 4
   },
   "D9": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: ............................                                             [100%]",
-   "iteration": 3
+   "iteration": 4
   },
   "D10": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: changed lines in upstream files: 32 (budget 60)",
-   "iteration": 3
+   "iteration": 4
   },
   "D11": {
    "verification": "descriptive",
    "status": "not checked",
    "evidence": "excluded from exit; human review",
-   "iteration": 3
+   "iteration": 4
   },
   "D12": {
    "verification": "command",
    "status": "fail",
    "evidence": "exit 1: .............                                                            [100%]",
-   "iteration": 3
+   "iteration": 4
   },
   "D13": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 4/4 checks passed",
-   "iteration": 3
+   "iteration": 4
   }
  },
- "dod_result": "RESULT: FAIL (4 of 12 command criteria failed) (iteration 3, report docs/iterations/3-dod.md)",
+ "dod_result": "RESULT: FAIL (3 of 12 command criteria failed) (iteration 4, report docs/iterations/4-dod.md)",
  "log": [
   "it1 T1: done, commit 8debe41, fix rounds 0; T1 implemented by sonnet; orchestrator re-ran npm test 91/0 and live-check 25/25 with real model",
   "it2 T3: done, commit 07c6c65, fix rounds 1; T3 implemented by sonnet; orchestrator re-ran live-sidecall --only paid 12/12, npm test 91/0, mutation (drop provider from reply) -> 3 Node tests fail; T3 fix round 1: 5a test plugin/dsh/test/stub_core.test.mjs written (6 of 7 fail on assertions); 5b next",
-  "it3 T4: done, commit 5fbb1b0, fix rounds 0; T4 implemented by sonnet (tests + live route group, production code unchanged); orchestrator re-ran npm test 105/0 and live-sidecall --only route 7/7"
+  "it3 T4: done, commit 5fbb1b0, fix rounds 0; T4 implemented by sonnet (tests + live route group, production code unchanged); orchestrator re-ran npm test 105/0 and live-sidecall --only route 7/7",
+  "it4 T2: done, commit d2263dd, fix rounds 0; T2: live-prune-loop 15/15 re-run by orchestrator; mutation (applyDeny always off) -> 2 FAIL; review deferred to T8"
  ],
  "decisions": [
   {
@@ -347,8 +340,8 @@
   "phase": "active",
   "audit": null
  },
- "last_commit": "5fbb1b0",
- "last_item": "T4",
+ "last_commit": "d2263dd",
+ "last_item": "T2",
  "needs_dod": false,
- "dod_check_head": "5fbb1b0"
+ "dod_check_head": "d2263dd"
 }
