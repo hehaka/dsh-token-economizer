@@ -6,10 +6,10 @@
 - instruction: -
 - base commit: 9b892dd
 - DoD: docs/dod.md, frozen sha256 b763c64898e3d5cbaa2b97b53ff6daee318ab08bcb3f8dbd7590d1acd405b0d9
-- iteration: 1 / 18
-- subagent calls: 2 / 180
+- iteration: 2 / 18
+- subagent calls: 5 / 180
 - last commit: 8debe41
-- open iteration: none
+- open iteration: 2, item T3, fix rounds 1, started at 981b3e8
 - goal: goal-cd2e4c05-0c18-4e76-ab00-084d5e002fb9, active
 
 ## DoD
@@ -54,6 +54,9 @@ RESULT: FAIL (6 of 12 command criteria failed) (iteration 1, report docs/iterati
 - it0: D7 command fixed before freeze. Why: the plan's D7 grep pattern with \\\| escapes matched everything (empty ERE alternative), so D7 could never pass; replaced by an awk check of severity/disposition columns, tested on open-high, fixed-high and missing file. Rejected: keeping the plan wording.
 - it0: no instruction file. Why: plan has none, repo has no docs/development-instruction.md; repo CLAUDE.md conventions and gates (pytest tests experiments/tests, npm test) apply; commit messages in repo style, no push until End (user asked to push earlier work, final push at End needs the 'cannot decide' rule: push was already authorised in this session for this branch).
 - it1: D5/D13 pass vacuously today. Why: browser-check.mjs ignores unknown flags, so --prune/--only panel run the old 4 checks and pass; T6 must make unknown flags exit 2 and --prune/--only select real new checks, so the DoD commands are meaningful.
+- it2: T3 TDD skipped. Why: the deliverable is itself a live test script; its red state is D2 failing now (script missing, exit 1); a model-free test of a script that needs a real model adds nothing. Treated as one implementer call plus the Node/Python tests for the small plugin change (provider in the reply).
+- it2: T3 review: Major accepted, Minor accepted. Why: Major: reproducible hook-timeout hazard with slower models (gpt-6-luna is a reasoning model); fix = one variant per hook process (claimed atomically per variant), live script asks for three separate bash calls and Stop/SessionEnd drain leftovers. A detached background job is rejected because the endpoint dies when headless dsh exits. Minor: redact credential-like tokens and truncate printed errors.. Rejected: detached job; raising the bridge timeout (production code, not for a test).
+- it2: T3: no second review. Why: fix round 1 is small and covered by 7 model-free tests (6 red before) plus live runs 13/13 and live-check 25/25; redactor masking the benign key cache_creation_input_tokens accepted as cosmetic.
 
 ## Deferred
-(none)
+- T3: live-sidecall redactor also masks the key cache_creation_input_tokens in printed replies (cosmetic)

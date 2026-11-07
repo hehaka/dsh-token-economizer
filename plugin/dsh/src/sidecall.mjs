@@ -88,7 +88,7 @@ export async function complete(llm, route, { prompt, model, maxTokens }, signal)
     }
     signal?.throwIfAborted();
     if (finish?.kind === 'error' || finish?.kind === 'aborted') throw failure(finish.failure);
-    return { text, usage: ledgerUsage(usage), model: target.model };
+    return { text, usage: ledgerUsage(usage), model: target.model, provider: target.provider };
   } catch (err) {
     if (err instanceof SidecallError) throw err;
     if (signal?.aborted) throw new SidecallError('TIMEOUT', 'the model call was cancelled or timed out', 504);

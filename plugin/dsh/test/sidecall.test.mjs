@@ -63,7 +63,7 @@ test('one call: one attempt, the prompt as the only message, the least reasoning
     { type: 'text-delta', index: 1, text: '{"stuck": ' }, { type: 'text-delta', index: 1, text: 'true}' },
     { type: 'usage', usage: USAGE }, { type: 'finish', reason: { kind: 'stop' } }] });
   const out = await complete(llm, ROUTE, { prompt: 'is it stuck?' }, new AbortController().signal);
-  assert.deepEqual(out, { text: '{"stuck": true}', usage: ledgerUsage(USAGE), model: 'claude-haiku-5-5' });   // reasoning is not the answer
+  assert.deepEqual(out, { text: '{"stuck": true}', usage: ledgerUsage(USAGE), model: 'claude-haiku-5-5', provider: 'anthropic' });   // reasoning is not the answer
   assert.deepEqual(llm.seen.prepared, [{ provider: 'anthropic', model: 'claude-haiku-5-5', maxTokens: 1024 }]);
   assert.equal(llm.seen.controls.reasoningEffort, 'minimal');
   const [options] = llm.seen.options;
@@ -83,6 +83,9 @@ test('paid_model replaces the route', async () => {
   const llm = fakeLlm({});
   const out = await complete(llm, ROUTE, { prompt: 'q', model: 'openai/gpt-6-mini' }, undefined);
   assert.deepEqual([llm.seen.prepared[0].provider, llm.seen.prepared[0].model, out.model], ['openai', 'gpt-6-mini', 'gpt-6-mini']);
+  assert.equal(out.provider, 'openai');                                                                         // the reply names the provider actually used
+  const bare = await complete(fakeLlm({}), ROUTE, { prompt: 'q', model: 'claude-sonnet-5-5' }, undefined);
+  assert.deepEqual([bare.provider, bare.model], ['anthropic', 'claude-sonnet-5-5']);                            // a bare model keeps the route's provider
 });
 
 const code = async (p) => p.then(() => 'ok', (e) => (e instanceof SidecallError ? e.code : `other:${e}`));
@@ -140,7 +143,7 @@ test('the endpoint answers a call with the text and the usage', async () => {
   const e = await endpoint();
   const r = await e.post({ prompt: 'is it stuck?' });
   assert.equal(r.status, 200);
-  assert.deepEqual(r.doc, { text: 'ok', usage: ledgerUsage(USAGE), model: 'claude-haiku-5-5' });
+  assert.deepEqual(r.doc, { text: 'ok', usage: ledgerUsage(USAGE), model: 'claude-haiku-5-5', provider: 'anthropic' });
   await e.stop();
 });
 
