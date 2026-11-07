@@ -362,8 +362,8 @@
  "goal": {
   "id": "goal-cd2e4c05-0c18-4e76-ab00-084d5e002fb9",
   "revision": 1,
-  "phase": "active",
-  "audit": null
+  "phase": "complete",
+  "audit": "PASS WITH LIMITS: not verified live - two sessions on different models in one process (fake ctx.llm tests only), tool_call proxy unwrap (unit tests only), PTC run_code sessions, interactive TUI, desktop app, NO_ROUTE live race; DSH removes its endpoint file on SIGTERM so the stale-file sweep is verified on a fabricated file"
  },
  "last_commit": "cf453b0",
  "last_item": "T9",
