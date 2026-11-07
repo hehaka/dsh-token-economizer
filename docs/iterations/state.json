@@ -1,0 +1,167 @@
+{
+ "version": 2,
+ "plan": "docs/plans/2026-11-07-dsh-brakujace-kontrole-na-zywo.md",
+ "instruction": "repo CLAUDE.md",
+ "status_file": "docs/implementation-status.md",
+ "dod_file": "docs/dod.md",
+ "dod_hash": "29ef905b325fe55bb641acaec6703f78a0e97bc23751ee39e75130de9a1d5f2c",
+ "base": "0bce3df",
+ "max_iterations": 14,
+ "budget": 140,
+ "calls": 0,
+ "iteration": 0,
+ "open": null,
+ "items": [
+  {
+   "id": "T1",
+   "kind": "other",
+   "priority": "must",
+   "scope": "plan T1: feasibility spike for two models/proxy/PTC/TUI/resume",
+   "serves": [
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "deps": [],
+   "status": "open",
+   "iteration": null,
+   "commit": null,
+   "hypotheses": [],
+   "block": null
+  },
+  {
+   "id": "T2",
+   "kind": "behaviour",
+   "priority": "must",
+   "scope": "plan T2: live-multisession.mjs models|resume",
+   "serves": [
+    "D1",
+    "D2",
+    "D6",
+    "D7"
+   ],
+   "deps": [
+    "T1"
+   ],
+   "status": "open",
+   "iteration": null,
+   "commit": null,
+   "hypotheses": [],
+   "block": null
+  },
+  {
+   "id": "T3",
+   "kind": "behaviour",
+   "priority": "must",
+   "scope": "plan T3: live-proxy.mjs",
+   "serves": [
+    "D3",
+    "D6",
+    "D7"
+   ],
+   "deps": [
+    "T1"
+   ],
+   "status": "open",
+   "iteration": null,
+   "commit": null,
+   "hypotheses": [],
+   "block": null
+  },
+  {
+   "id": "T4",
+   "kind": "behaviour",
+   "priority": "must",
+   "scope": "plan T4: live-ptc.mjs and fix if needed",
+   "serves": [
+    "D4",
+    "D6",
+    "D7",
+    "D8"
+   ],
+   "deps": [
+    "T1"
+   ],
+   "status": "open",
+   "iteration": null,
+   "commit": null,
+   "hypotheses": [],
+   "block": null
+  },
+  {
+   "id": "T5",
+   "kind": "behaviour",
+   "priority": "must",
+   "scope": "plan T5: live-tui.mjs",
+   "serves": [
+    "D5",
+    "D6",
+    "D7"
+   ],
+   "deps": [
+    "T1"
+   ],
+   "status": "open",
+   "iteration": null,
+   "commit": null,
+   "hypotheses": [],
+   "block": null
+  },
+  {
+   "id": "T6",
+   "kind": "other",
+   "priority": "must",
+   "scope": "plan T6: review of production fixes of this run",
+   "serves": [
+    "D9",
+    "D10"
+   ],
+   "deps": [
+    "T2",
+    "T3",
+    "T4",
+    "T5"
+   ],
+   "status": "open",
+   "iteration": null,
+   "commit": null,
+   "hypotheses": [],
+   "block": null
+  },
+  {
+   "id": "T7",
+   "kind": "other",
+   "priority": "must",
+   "scope": "plan T7: docs, full tests, budget, push",
+   "serves": [
+    "D6",
+    "D7",
+    "D8",
+    "D9",
+    "D11"
+   ],
+   "deps": [
+    "T6"
+   ],
+   "status": "open",
+   "iteration": null,
+   "commit": null,
+   "hypotheses": [],
+   "block": null
+  }
+ ],
+ "dod": {},
+ "dod_result": "",
+ "log": [],
+ "decisions": [],
+ "deferred": [],
+ "stop": "",
+ "goal": {
+  "id": "goal-4ef63029-44d6-4e4b-8a8c-9990ca83f071",
+  "revision": 1,
+  "phase": "active",
+  "audit": null
+ }
+}
