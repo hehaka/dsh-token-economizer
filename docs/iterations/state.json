@@ -10,13 +10,7 @@
  "budget": 180,
  "calls": 25,
  "iteration": 9,
- "open": {
-  "k": 9,
-  "item": "T9",
-  "fix_rounds": 0,
-  "start": "3c68d5b",
-  "notes": []
- },
+ "open": null,
  "items": [
   {
    "id": "T1",
@@ -184,9 +178,9 @@
    "deps": [
     "T8"
    ],
-   "status": "open",
-   "iteration": null,
-   "commit": null,
+   "status": "done",
+   "iteration": 9,
+   "commit": "cf453b0",
    "hypotheses": [],
    "block": null
   }
@@ -196,82 +190,82 @@
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 15/15 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-prune",
-   "iteration": 8
+   "iteration": 9
   },
   "D2": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 13/13 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sidecall",
-   "iteration": 8
+   "iteration": 9
   },
   "D3": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 7/7 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-route",
-   "iteration": 8
+   "iteration": 9
   },
   "D4": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 34/34 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sessions-sigterm",
-   "iteration": 8
+   "iteration": 9
   },
   "D5": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 24/24 checks passed",
-   "iteration": 8
+   "iteration": 9
   },
   "D6": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: no output",
-   "iteration": 8
+   "iteration": 9
   },
   "D7": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: no output",
-   "iteration": 8
+   "iteration": 9
   },
   "D8": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 25/25 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live",
-   "iteration": 8
+   "iteration": 9
   },
   "D9": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: ...............................................................          [100%]",
-   "iteration": 8
+   "iteration": 9
   },
   "D10": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: changed lines in upstream files: 46 (budget 60)",
-   "iteration": 8
+   "iteration": 9
   },
   "D11": {
    "verification": "descriptive",
    "status": "not checked",
    "evidence": "excluded from exit; human review",
-   "iteration": 8
+   "iteration": 9
   },
   "D12": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: ......................                                                   [100%]",
-   "iteration": 8
+   "iteration": 9
   },
   "D13": {
    "verification": "command",
    "status": "pass",
    "evidence": "exit 0: 13/13 checks passed",
-   "iteration": 8
+   "iteration": 9
   }
  },
- "dod_result": "RESULT: PASS (12 command criteria) (iteration 8, report docs/iterations/8-dod.md)",
+ "dod_result": "RESULT: PASS (12 command criteria) (iteration 9, report docs/iterations/9-dod.md)",
  "log": [
   "it1 T1: done, commit 8debe41, fix rounds 0; T1 implemented by sonnet; orchestrator re-ran npm test 91/0 and live-check 25/25 with real model",
   "it2 T3: done, commit 07c6c65, fix rounds 1; T3 implemented by sonnet; orchestrator re-ran live-sidecall --only paid 12/12, npm test 91/0, mutation (drop provider from reply) -> 3 Node tests fail; T3 fix round 1: 5a test plugin/dsh/test/stub_core.test.mjs written (6 of 7 fail on assertions); 5b next",
@@ -280,7 +274,8 @@
   "it5 T5: done, commit 22afdb9, fix rounds 0; T5: live-sessions 34/34 re-run by orchestrator; no production defect",
   "it6 T7: done, commit 1b7e8ba, fix rounds 0",
   "it7 T6: done, commit f2c2d59, fix rounds 0; T6: browser-check strict CLI + --prune scenario; defect fix in tools.mjs/plugin.mjs; orchestrator re-ran npm test 124/0",
-  "it8 T8: done, commit 01f06f5, fix rounds 0; T8: reviews A (sol) and B (mai) triaged; fixes A and B committed; report docs/reviews/2026-11-07-dsh-prune-sidecall.md"
+  "it8 T8: done, commit 01f06f5, fix rounds 0; T8: reviews A (sol) and B (mai) triaged; fixes A and B committed; report docs/reviews/2026-11-07-dsh-prune-sidecall.md",
+  "it9 T9: done, commit cf453b0, fix rounds 0; T9: docs committed; full pytest exit 0, 591 tests; orchestrator ran it"
  ],
  "decisions": [
   {
@@ -370,8 +365,8 @@
   "phase": "active",
   "audit": null
  },
- "last_commit": "01f06f5",
- "last_item": "T8",
+ "last_commit": "cf453b0",
+ "last_item": "T9",
  "needs_dod": false,
- "dod_check_head": "01f06f5"
+ "dod_check_head": "cf453b0"
 }

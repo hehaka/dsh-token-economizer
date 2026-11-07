@@ -8,3 +8,4 @@
 - it6 T7: done, commit 1b7e8ba, fix rounds 0
 - it7 T6: done, commit f2c2d59, fix rounds 0; T6: browser-check strict CLI + --prune scenario; defect fix in tools.mjs/plugin.mjs; orchestrator re-ran npm test 124/0
 - it8 T8: done, commit 01f06f5, fix rounds 0; T8: reviews A (sol) and B (mai) triaged; fixes A and B committed; report docs/reviews/2026-11-07-dsh-prune-sidecall.md
+- it9 T9: done, commit cf453b0, fix rounds 0; T9: docs committed; full pytest exit 0, 591 tests; orchestrator ran it

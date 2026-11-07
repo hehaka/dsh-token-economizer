@@ -8,28 +8,28 @@
 - DoD: docs/dod.md, frozen sha256 b763c64898e3d5cbaa2b97b53ff6daee318ab08bcb3f8dbd7590d1acd405b0d9
 - iteration: 9 / 18
 - subagent calls: 25 / 180
-- last commit: 01f06f5
-- open iteration: 9, item T9, fix rounds 0, started at 3c68d5b
+- last commit: cf453b0
+- open iteration: none
 - goal: goal-cd2e4c05-0c18-4e76-ab00-084d5e002fb9, active
 
 ## DoD
 | id | verification | status | evidence | iteration |
 |---|---|---|---|---|
-| D1 | command | pass | exit 0: 15/15 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-prune | 8 |
-| D2 | command | pass | exit 0: 13/13 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sidecall | 8 |
-| D3 | command | pass | exit 0: 7/7 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-route | 8 |
-| D4 | command | pass | exit 0: 34/34 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sessions-sigterm | 8 |
-| D5 | command | pass | exit 0: 24/24 checks passed | 8 |
-| D6 | command | pass | exit 0: no output | 8 |
-| D7 | command | pass | exit 0: no output | 8 |
-| D8 | command | pass | exit 0: 25/25 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live | 8 |
-| D9 | command | pass | exit 0: ...............................................................          [100%] | 8 |
-| D10 | command | pass | exit 0: changed lines in upstream files: 46 (budget 60) | 8 |
-| D11 | descriptive | not checked | excluded from exit; human review | 8 |
-| D12 | command | pass | exit 0: ......................                                                   [100%] | 8 |
-| D13 | command | pass | exit 0: 13/13 checks passed | 8 |
+| D1 | command | pass | exit 0: 15/15 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-prune | 9 |
+| D2 | command | pass | exit 0: 13/13 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sidecall | 9 |
+| D3 | command | pass | exit 0: 7/7 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-route | 9 |
+| D4 | command | pass | exit 0: 34/34 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sessions-sigterm | 9 |
+| D5 | command | pass | exit 0: 24/24 checks passed | 9 |
+| D6 | command | pass | exit 0: no output | 9 |
+| D7 | command | pass | exit 0: no output | 9 |
+| D8 | command | pass | exit 0: 25/25 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live | 9 |
+| D9 | command | pass | exit 0: ...............................................................          [100%] | 9 |
+| D10 | command | pass | exit 0: changed lines in upstream files: 46 (budget 60) | 9 |
+| D11 | descriptive | not checked | excluded from exit; human review | 9 |
+| D12 | command | pass | exit 0: ......................                                                   [100%] | 9 |
+| D13 | command | pass | exit 0: 13/13 checks passed | 9 |
 
-RESULT: PASS (12 command criteria) (iteration 8, report docs/iterations/8-dod.md)
+RESULT: PASS (12 command criteria) (iteration 9, report docs/iterations/9-dod.md)
 
 ## Backlog
 | id | kind | priority | serves | deps | status | iteration | commit | scope |
@@ -42,7 +42,7 @@ RESULT: PASS (12 command criteria) (iteration 8, report docs/iterations/8-dod.md
 | T7 | behaviour | must | D6,D12,D13,D9 | - | done | 6 | 1b7e8ba | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T7: panel.py side key, client model/view rows, model.test.mjs text |
 | T6 | behaviour | must | D5,D13 | T7,T1 | done | 7 | f2c2d59 | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T6: browser-check.mjs --prune [--only panel] |
 | T8 | other | must | D7,D6,D9,D10 | T2,T3,T4,T5,T6,T7 | done | 8 | 01f06f5 | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T8: code review report docs/reviews/2026-11-07-dsh-prune-sidecall.md + fixes |
-| T9 | other | must | D8,D9,D10,D11 | T8 | open | - | - | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T9: ADR 0004, README, spike notes, budget, full tests |
+| T9 | other | must | D8,D9,D10,D11 | T8 | done | 9 | cf453b0 | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T9: ADR 0004, README, spike notes, budget, full tests |
 
 ## Blocked
 (none)
@@ -56,6 +56,7 @@ RESULT: PASS (12 command criteria) (iteration 8, report docs/iterations/8-dod.md
 - it6 T7: done, commit 1b7e8ba, fix rounds 0
 - it7 T6: done, commit f2c2d59, fix rounds 0; T6: browser-check strict CLI + --prune scenario; defect fix in tools.mjs/plugin.mjs; orchestrator re-ran npm test 124/0
 - it8 T8: done, commit 01f06f5, fix rounds 0; T8: reviews A (sol) and B (mai) triaged; fixes A and B committed; report docs/reviews/2026-11-07-dsh-prune-sidecall.md
+- it9 T9: done, commit cf453b0, fix rounds 0; T9: docs committed; full pytest exit 0, 591 tests; orchestrator ran it
 
 ## Last 10 decisions (all: docs/iterations/decisions.md)
 - it1: D5/D13 pass vacuously today. Why: browser-check.mjs ignores unknown flags, so --prune/--only panel run the old 4 checks and pass; T6 must make unknown flags exit 2 and --prune/--only select real new checks, so the DoD commands are meaningful.
