@@ -8,18 +8,33 @@
 - DoD: docs/dod.md, frozen sha256 b763c64898e3d5cbaa2b97b53ff6daee318ab08bcb3f8dbd7590d1acd405b0d9
 - iteration: 1 / 18
 - subagent calls: 2 / 180
-- last commit: -
-- open iteration: 1, item T1, fix rounds 0, started at 9b892dd
+- last commit: 8debe41
+- open iteration: none
 - goal: goal-cd2e4c05-0c18-4e76-ab00-084d5e002fb9, active
 
 ## DoD
 | id | verification | status | evidence | iteration |
 |---|---|---|---|---|
+| D1 | command | fail | exit 1: Node.js v22.23.2 | 1 |
+| D2 | command | fail | exit 1: Node.js v22.23.2 | 1 |
+| D3 | command | fail | exit 1: Node.js v22.23.2 | 1 |
+| D4 | command | fail | exit 1: Node.js v22.23.2 | 1 |
+| D5 | command | pass | exit 0: 4/4 checks passed | 1 |
+| D6 | command | pass | exit 0: no output | 1 |
+| D7 | command | fail | exit 1: no output | 1 |
+| D8 | command | pass | exit 0: 25/25 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live | 1 |
+| D9 | command | pass | exit 0: ..........................                                               [100%] | 1 |
+| D10 | command | pass | exit 0: changed lines in upstream files: 32 (budget 60) | 1 |
+| D11 | descriptive | not checked | excluded from exit; human review | 1 |
+| D12 | command | fail | exit 1: .............                                                            [100%] | 1 |
+| D13 | command | pass | exit 0: 4/4 checks passed | 1 |
+
+RESULT: FAIL (6 of 12 command criteria failed) (iteration 1, report docs/iterations/1-dod.md)
 
 ## Backlog
 | id | kind | priority | serves | deps | status | iteration | commit | scope |
 |---|---|---|---|---|---|---|---|---|
-| T1 | other | must | D8 | - | open | - | - | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T1: plugin/dsh/test/live/common.mjs; live-check.mjs uses it |
+| T1 | other | must | D8 | - | done | 1 | 8debe41 | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T1: plugin/dsh/test/live/common.mjs; live-check.mjs uses it |
 | T3 | behaviour | must | D2 | T1 | open | - | - | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T3: live-sidecall.mjs --only paid; stub_core imports real Runner |
 | T4 | behaviour | must | D3,D6,D9 | T3 | open | - | - | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T4: route before first request (probe, observeRoute, --only route, tests) |
 | T2 | behaviour | must | D1,D9 | T1 | open | - | - | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T2: live-prune-loop.mjs |
@@ -33,11 +48,12 @@
 (none)
 
 ## Last 10 iterations (full log: docs/iterations/log.md)
-(none)
+- it1 T1: done, commit 8debe41, fix rounds 0; T1 implemented by sonnet; orchestrator re-ran npm test 91/0 and live-check 25/25 with real model
 
 ## Last 10 decisions (all: docs/iterations/decisions.md)
 - it0: D7 command fixed before freeze. Why: the plan's D7 grep pattern with \\\| escapes matched everything (empty ERE alternative), so D7 could never pass; replaced by an awk check of severity/disposition columns, tested on open-high, fixed-high and missing file. Rejected: keeping the plan wording.
 - it0: no instruction file. Why: plan has none, repo has no docs/development-instruction.md; repo CLAUDE.md conventions and gates (pytest tests experiments/tests, npm test) apply; commit messages in repo style, no push until End (user asked to push earlier work, final push at End needs the 'cannot decide' rule: push was already authorised in this session for this branch).
+- it1: D5/D13 pass vacuously today. Why: browser-check.mjs ignores unknown flags, so --prune/--only panel run the old 4 checks and pass; T6 must make unknown flags exit 2 and --prune/--only select real new checks, so the DoD commands are meaningful.
 
 ## Deferred
 (none)
