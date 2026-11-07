@@ -28,8 +28,8 @@
 // `--patch` overlay of the `web` profile. DSH_HOME stays ISOLATED: the web profile does not need the
 // headless profile's MCP servers (nor its secrets), so sessions land in the temporary home.
 import { spawn, spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { homedir, tmpdir } from 'node:os';
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launch } from './cdp.mjs';
@@ -270,30 +270,6 @@ async function existingGroup(h) {
 const DENIED = 'read_image';                  // a built-in tool that is visible in the profile and harmless to lose
 const PRUNE_PROMPT = 'Use the bash tool to run echo te-browser-prune, then reply done';
 
-/**
- * The web profile's `--patch` overlay that carries the headless profile's models: the top-level entries
- * `llm-pi-ai` and `agent-default-model` of its `cordis.patch.yml`, copied as text (no YAML library; the
- * entries name the key's environment variable, not the key, and the MCP servers of that file are left out).
- */
-function profileModelPatch(work) {
-  const file = join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'profiles', 'headless', 'cordis.patch.yml');
-  if (!existsSync(file)) throw new Error(`no ${file}: pass --patch with a model configuration`);
-  const keep = [];
-  let on = false;
-  for (const line of readFileSync(file, 'utf8').split('\n')) {
-    const id = /^- id: (\S+)/.exec(line)?.[1];
-    if (id) on = id === 'llm-pi-ai' || id === 'agent-default-model';
-    else if (/^\S/.test(line) && !line.startsWith('#')) on = false;
-    if (on) keep.push(line);
-  }
-  const text = keep.join('\n');
-  if (!/^- id: llm-pi-ai/m.test(text) || !/^- id: agent-default-model/m.test(text)) throw new Error(`${file} has no llm-pi-ai / agent-default-model entry`);
-  const out = join(work, 'headless-models.patch.yml');
-  writeFileSync(out, `${text}\n`);
-  return out;
-}
-
-const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e?.code === 'EPERM'; } };
 
 async function pruneScenario(h, groups) {
   const { work } = h;
@@ -316,7 +292,7 @@ async function pruneScenario(h, groups) {
   let modelPatches = extraPatches;
   if (!extraPatches.length) {
     live.loadProfileEnv('headless');                 // before DSH_HOME is touched below; values are never printed
-    modelPatches = [profileModelPatch(work)];
+    modelPatches = [live.profileModelPatch(work)];
   }
   const state = join(work, 'state');
   const home = join(work, 'home');
@@ -372,7 +348,7 @@ async function pruneScenario(h, groups) {
     if (files.length === 1) {
       endpointFile = join(state, 'hosts', 'dsh', files[0]);
       const owner = Number(/sidecall\.(\d+)\./.exec(files[0])?.[1]);
-      h.onCleanup(() => { if (owner && alive(owner)) { try { process.kill(owner, 'SIGKILL'); } catch { /* */ } } });   // never leave the app behind
+      h.onCleanup(() => { if (owner && live.alive(owner)) { try { process.kill(owner, 'SIGKILL'); } catch { /* */ } } });   // never leave the app behind
       let ep = {};
       try { ep = JSON.parse(readFileSync(endpointFile, 'utf8')); } catch { /* checked below */ }
       check('prune: the endpoint file names a port and a token', Number.isInteger(ep.port) && ep.port > 0 && typeof ep.token === 'string' && ep.token.length > 0);
@@ -416,7 +392,7 @@ async function pruneScenario(h, groups) {
     // (c) the process the endpoint belongs to: DSH may run the app as a child of the `dsh` launcher
     const owner = Number(/sidecall\.(\d+)\./.exec(endpointFile)?.[1]);
     server.kill('SIGTERM');
-    const exited = await live.waitFor(() => !alive(owner), 20_000, 200);
+    const exited = await live.waitFor(() => !live.alive(owner), 20_000, 200);
     await sleep(500);
     const left = live.endpointFiles(state);
     if (!left.length) check('prune: after SIGTERM the endpoint file is gone', true);

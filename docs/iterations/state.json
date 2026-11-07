@@ -8,14 +8,16 @@
  "base": "0bce3df",
  "max_iterations": 14,
  "budget": 140,
- "calls": 1,
- "iteration": 1,
+ "calls": 2,
+ "iteration": 2,
  "open": {
-  "k": 1,
-  "item": "T1",
+  "k": 2,
+  "item": "T2",
   "fix_rounds": 0,
-  "start": "a63b6e2",
-  "notes": []
+  "start": "4217a8c",
+  "notes": [
+   "T2: live-multisession models 24/24 (orchestrator re-run), resume 9/9, npm test 153/0"
+  ]
  },
  "items": [
   {
@@ -31,9 +33,9 @@
     "D5"
    ],
    "deps": [],
-   "status": "open",
-   "iteration": null,
-   "commit": null,
+   "status": "done",
+   "iteration": 1,
+   "commit": "4217a8c",
    "hypotheses": [],
    "block": null
   },
@@ -109,11 +111,14 @@
    "deps": [
     "T1"
    ],
-   "status": "open",
+   "status": "blocked",
    "iteration": null,
    "commit": null,
    "hypotheses": [],
-   "block": null
+   "block": {
+    "condition": "this dsh install has no TUI: 'dsh tui' fails with 'profile tui does not exist'; profiles are acp, web, headless, sdk, sdk-minimal (docs/iterations/1-spike.md Q5)",
+    "question": "Czy D5 (TUI na żywo) ma zostać usunięte z DoD jako niewykonalne w tym środowisku, czy mam zainstalować społecznościowy pakiet TUI z npm (poza planem)?"
+   }
   },
   {
    "id": "T6",
@@ -160,7 +165,9 @@
  ],
  "dod": {},
  "dod_result": "",
- "log": [],
+ "log": [
+  "it1 T1: done, commit 4217a8c, fix rounds 0"
+ ],
  "decisions": [
   {
    "iteration": 1,
@@ -181,12 +188,17 @@
    "rejected": ""
   }
  ],
- "deferred": [],
+ "deferred": [
+  "known limit: in dsh web, after session/selectModel and before the session's first request the endpoint answers a call for that session on the profile default model (agent.options), not on the selected model; never another session's route (live-multisession (f)). Fix needs a DSH event carrying the selection; not found in the spike"
+ ],
  "stop": "",
  "goal": {
   "id": "goal-4ef63029-44d6-4e4b-8a8c-9990ca83f071",
   "revision": 1,
   "phase": "active",
   "audit": null
- }
+ },
+ "last_commit": "4217a8c",
+ "last_item": "T1",
+ "needs_dod": true
 }

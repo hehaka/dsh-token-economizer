@@ -69,7 +69,7 @@ async function setup(opts) {
 }
 
 /** Run `stub_core.py hook --host dsh` as the plugin does: the payload on stdin. Never rejects. */
-function hook(s, payload, { runner = true, paid = VARIANTS, route = false, endpointEnv = true } = {}) {
+function hook(s, payload, { runner = true, paid = VARIANTS, route = false, endpointEnv = true, session } = {}) {
   const env = {
     PATH: process.env.PATH ?? '',
     HOME: s.dir,
@@ -80,6 +80,7 @@ function hook(s, payload, { runner = true, paid = VARIANTS, route = false, endpo
     TE_LIVE_PAID: JSON.stringify(paid),
   };
   if (endpointEnv) env.TE_DSH_SIDECALL_FILE = s.endpointFile;
+  if (session) env.TE_DSH_SESSION = session;                      // what the DSH plugin puts on a hook's environment
   if (runner && !route) env.TE_LIVE_RUNNER = '1';
   if (route) env.TE_LIVE_ROUTE = '1';
   return new Promise((resolve) => {
@@ -219,7 +220,8 @@ test('TE_LIVE_ROUTE: one row per hook name (SessionStart, UserPromptSubmit, Post
   assert.deepEqual(phases(s), ['SessionStart', 'UserPromptSubmit', 'PostToolUse'], 'no further row');
   assert.equal(s.fake.requests.length, 3, 'no further request');
   for (const row of rows(s)) {
-    assert.deepEqual(Object.keys(row).sort(), ['charge', 'effective', 'endpoint_file', 'phase', 'reply', 'text']);
+    assert.deepEqual(Object.keys(row).sort(), ['charge', 'effective', 'endpoint_file', 'phase', 'reply', 'session', 'text']);
+    assert.equal(row.session, null, 'no TE_DSH_SESSION on the hook environment: the call named no session');
     assert.equal(row.text, 'pong');
     assert.deepEqual(row.reply, REPLY);
     assert.ok(row.effective > 0 && row.charge === row.effective, 'a call that reported its usage is charged that usage');
@@ -243,6 +245,13 @@ test('TE_LIVE_ROUTE: every row carries endpoint_file, the TE_DSH_SIDECALL_FILE t
     assert.equal(row.endpoint_file, null);
     assert.equal(bare.fake.requests.length, 0, 'no endpoint file, no request');
   } finally { await bare.fake.close(); }
+}));
+
+test('TE_LIVE_ROUTE: every row carries session, the TE_DSH_SESSION of the hook, and the call names that session', () => withSetup({}, async (s) => {
+  for (const p of [start, prompt, post]) assert.equal((await hook(s, p, { route: true, session: 'session-abc' })).code, 0);
+  assert.equal(rows(s).length, 3);
+  for (const row of rows(s)) assert.equal(row.session, 'session-abc', `${row.phase}: the session the plugin named`);
+  for (const req of s.fake.requests) assert.equal(req.body.session, 'session-abc', 'the real runner sends it as the field `session`');
 }));
 
 test('TE_LIVE_ROUTE: other hooks make no call, and the hooks keep answering their notes', () => withSetup({}, async (s) => {

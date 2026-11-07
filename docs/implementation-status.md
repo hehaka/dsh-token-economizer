@@ -6,10 +6,10 @@
 - instruction: repo CLAUDE.md
 - base commit: 0bce3df
 - DoD: docs/dod.md, frozen sha256 29ef905b325fe55bb641acaec6703f78a0e97bc23751ee39e75130de9a1d5f2c
-- iteration: 1 / 14
-- subagent calls: 1 / 140
-- last commit: -
-- open iteration: 1, item T1, fix rounds 0, started at a63b6e2
+- iteration: 2 / 14
+- subagent calls: 2 / 140
+- last commit: 4217a8c
+- open iteration: 2, item T2, fix rounds 0, started at 4217a8c
 - goal: goal-4ef63029-44d6-4e4b-8a8c-9990ca83f071, active
 
 ## DoD
@@ -19,19 +19,19 @@
 ## Backlog
 | id | kind | priority | serves | deps | status | iteration | commit | scope |
 |---|---|---|---|---|---|---|---|---|
-| T1 | other | must | D1,D2,D3,D4,D5 | - | open | - | - | plan T1: feasibility spike for two models/proxy/PTC/TUI/resume |
+| T1 | other | must | D1,D2,D3,D4,D5 | - | done | 1 | 4217a8c | plan T1: feasibility spike for two models/proxy/PTC/TUI/resume |
 | T2 | behaviour | must | D1,D2,D6,D7 | T1 | open | - | - | plan T2: live-multisession.mjs models/resume |
 | T3 | behaviour | must | D3,D6,D7 | T1 | open | - | - | plan T3: live-proxy.mjs |
 | T4 | behaviour | must | D4,D6,D7,D8 | T1 | open | - | - | plan T4: live-ptc.mjs and fix if needed |
-| T5 | behaviour | must | D5,D6,D7 | T1 | open | - | - | plan T5: live-tui.mjs |
+| T5 | behaviour | must | D5,D6,D7 | T1 | blocked | - | - | plan T5: live-tui.mjs |
 | T6 | other | must | D9,D10 | T2,T3,T4,T5 | open | - | - | plan T6: review of production fixes of this run |
 | T7 | other | must | D6,D7,D8,D9,D11 | T6 | open | - | - | plan T7: docs, full tests, budget, push |
 
 ## Blocked
-(none)
+- T5: this dsh install has no TUI: 'dsh tui' fails with 'profile tui does not exist'; profiles are acp, web, headless, sdk, sdk-minimal (docs/iterations/1-spike.md Q5). Hypotheses: none. Question: Czy D5 (TUI na żywo) ma zostać usunięte z DoD jako niewykonalne w tym środowisku, czy mam zainstalować społecznościowy pakiet TUI z npm (poza planem)?
 
 ## Last 10 iterations (full log: docs/iterations/log.md)
-(none)
+- it1 T1: done, commit 4217a8c, fix rounds 0
 
 ## Last 10 decisions (all: docs/iterations/decisions.md)
 - it1: T1 outcome: T2, T3, T4 go ahead with the spike's recipes; T5 (TUI) is blocked. Why: docs/iterations/1-spike.md: Q1 two sessions on different models in one dsh web is possible (UI pick + HTTP RPC session/create, session/selectModel, session/prompt); Q2 resume = --session-id with an agent-default-model overlay; Q3 dsh-tool-search overlay gives tool_search/tool_call; Q4 PTC = tools entry config mode ptc, nested bash is NOT in the spool (only run_code), Q5 this dsh install has no TUI profile (dsh tui: profile tui does not exist), so D5 cannot be met here and the DoD is frozen.
@@ -39,4 +39,4 @@
 - it1: T4 fix direction for PTC: the spool must not make a tool used from run_code look unused. Why: spike Q4: spool has only the run_code block, but PostToolUse reached the plugin for the nested bash first; the core would see an MCP tool used only through the SDK as never used and propose denying it.
 
 ## Deferred
-(none)
+- known limit: in dsh web, after session/selectModel and before the session's first request the endpoint answers a call for that session on the profile default model (agent.options), not on the selected model; never another session's route (live-multisession (f)). Fix needs a DSH event carrying the selection; not found in the spike

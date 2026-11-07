@@ -3,7 +3,8 @@
 // they have in common: CLI parsing, PASS/FAIL reporting, profile `.env`, package build,
 // the `--patch` overlay, the dsh process, and reading DSH's own session log.
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -176,4 +177,105 @@ export function allSessions() {
 export function spoolIds(home) {
   const dir = join(home, 'dsh-sessions');
   return existsSync(dir) ? readdirSync(dir).filter((n) => n.endsWith('.jsonl')).map((n) => n.replace(/\.jsonl$/, '')).sort() : [];
+}
+
+// -- `dsh web` helpers (live-multisession.mjs, browser-check.mjs) --------------------------------------
+export const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e?.code === 'EPERM'; } };
+
+/**
+ * The web profile's `--patch` overlay that carries the `profile`'s models (default headless): the top-level entries
+ * `llm-pi-ai` and `agent-default-model` of its `cordis.patch.yml`, copied as text (no YAML library; the
+ * entries name the key's environment variable, not the key, and the MCP servers of that file are left out).
+ */
+export function profileModelPatch(work, profile = 'headless') {
+  const file = join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'profiles', profile, 'cordis.patch.yml');
+  if (!existsSync(file)) throw new Error(`no ${file}: pass --patch with a model configuration`);
+  const keep = [];
+  let on = false;
+  for (const line of readFileSync(file, 'utf8').split('\n')) {
+    const id = /^- id: (\S+)/.exec(line)?.[1];
+    if (id) on = id === 'llm-pi-ai' || id === 'agent-default-model';
+    else if (/^\S/.test(line) && !line.startsWith('#')) on = false;
+    if (on) keep.push(line);
+  }
+  const text = keep.join('\n');
+  if (!/^- id: llm-pi-ai/m.test(text) || !/^- id: agent-default-model/m.test(text)) throw new Error(`${file} has no llm-pi-ai / agent-default-model entry`);
+  const out = join(work, 'headless-models.patch.yml');
+  writeFileSync(out, `${text}\n`);
+  return out;
+}
+
+/**
+ * An isolated `dsh web` (own DSH_HOME, own TokenEconomizer state, random port) with the plugin of `prep`
+ * (`prepareWork`'s result) and the headless profile's models; the session workspace is a temp git repository
+ * (DSH puts new sessions in `<Documents>/deepseek-harness/default-workspace`; the workspace controller's
+ * `documentsDirectory` moves Documents into the work directory). The profile `.env` must be loaded already
+ * (`loadProfileEnv`, before DSH_HOME is touched). `extraEnv` is added to the server's environment.
+ * Resolves to `{ server, url, home, state, repo, logFile }` (url carries the launch token: never print it).
+ */
+export async function startWeb(prep, extraEnv = {}, profile = 'headless') {
+  const { work, entry } = prep;
+  const documents = join(work, 'documents');
+  const repo = fakeGitRepo(join(documents, 'deepseek-harness', 'default-workspace'));
+  const patch = join(work, 'te.yml');
+  writeFileSync(patch, `- insert:\n    - id: te-live\n      name: ${JSON.stringify(entry)}\n- id: workspace-controller\n  name: '@deepseek-ai/dsh-api-workspace-controller'\n  config:\n    documentsDirectory: ${JSON.stringify(documents)}\n`);
+  const home = join(work, 'home');
+  const state = join(work, 'state');
+  const env = { ...process.env, DSH_HOME: home, TOKENECONOMIZER_HOME: state, CLAUDE_CONFIG_DIR: join(work, 'claude'), TE_FOLD_SYNC: '1', ...extraEnv };
+  for (const k of ['DSH_WEB_URL', 'DSH_PROFILE', 'DSH_PROFILE_DIR', 'DSH_SESSION_ID', 'DSH_SHELL']) delete env[k];   // belong to a parent dsh session
+  const server = spawn('dsh', ['--profile', 'web', '--patch', patch, '--patch', profileModelPatch(work, profile), '--port', '0', '--no-open'], { cwd: repo, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const logFile = join(work, 'server.log');
+  let out = '';
+  server.stdout.on('data', (d) => { out += d; appendFileSync(logFile, d); });
+  server.stderr.on('data', (d) => { appendFileSync(logFile, d); });
+  for (let i = 0; i < 80 && !/dsh web: \S+/.test(out); i += 1) await sleep(500);
+  const url = /dsh web: (\S+)/.exec(out)?.[1];
+  if (!url) { try { server.kill('SIGKILL'); } catch { /* gone */ } throw new Error(`dsh web did not start; see ${logFile}`); }
+  return { server, url, home, state, repo, logFile };
+}
+
+/**
+ * The JSON RPC of `dsh web` without a browser: the launch token is exchanged for the auth cookie, then every
+ * call is `POST /api/<method>` with `{type:'client-request', rpcId, method, payload:{args}}`. `rpc(method, args)`
+ * resolves to `{ status, ok, value, error }` (`error` is `{code, message}`; never print the token or the cookie).
+ */
+export async function webClient(url) {
+  const u = new URL(url);
+  const first = await fetch(`${u.origin}/${u.search}`, { redirect: 'manual' });
+  const cookie = first.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
+  if (!cookie) throw new Error(`the launch-token exchange gave no cookie (HTTP ${first.status})`);
+  const rpc = async (method, args = {}) => {
+    const res = await fetch(`${u.origin}/api/${method}`, {
+      method: 'POST', headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ type: 'client-request', rpcId: randomUUID(), method, payload: { args } }), signal: AbortSignal.timeout(60_000),
+    });
+    let body;
+    try { body = JSON.parse(await res.text()); } catch { body = {}; }
+    const result = body?.result ?? {};
+    return { status: res.status, ok: result.ok === true, value: result.value, error: result.ok === false ? result.error : undefined };
+  };
+  return { rpc };
+}
+
+/**
+ * One `POST /v1/complete` to the plugin's side-call endpoint of the state root `home` (the file is
+ * `<home>/hosts/dsh/sidecall.<pid>.endpoint.json`, the token goes in `Authorization`, never printed).
+ * Resolves to `{ status, provider, model, text, usage, code }` (`status` 0 when there was no endpoint or no answer).
+ */
+export async function endpointPost(home, body, timeoutMs = 120_000) {
+  const name = endpointFiles(home)[0];
+  if (!name) return { status: 0, code: 'NO_ENDPOINT_FILE' };
+  let ep;
+  try { ep = JSON.parse(readFileSync(join(home, 'hosts', 'dsh', name), 'utf8')); } catch { return { status: 0, code: 'UNREADABLE_ENDPOINT_FILE' }; }
+  try {
+    const res = await fetch(`http://127.0.0.1:${ep.port}/v1/complete`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ep.token}`, Host: `127.0.0.1:${ep.port}` },
+      body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs),
+    });
+    let j = {};
+    try { j = await res.json(); } catch { /* not JSON */ }
+    return { status: res.status, provider: j.provider, model: j.model, text: typeof j.text === 'string' ? j.text : undefined, usage: j.usage, code: j.error?.code };
+  } catch (e) {
+    return { status: 0, code: redact(e?.message ?? e) };
+  }
 }
