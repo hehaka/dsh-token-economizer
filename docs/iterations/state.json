@@ -8,9 +8,17 @@
  "base": "9b892dd",
  "max_iterations": 18,
  "budget": 180,
- "calls": 15,
- "iteration": 6,
- "open": null,
+ "calls": 17,
+ "iteration": 7,
+ "open": {
+  "k": 7,
+  "item": "T6",
+  "fix_rounds": 0,
+  "start": "629a92f",
+  "notes": [
+   "T6: browser-check strict CLI + --prune scenario; defect fix in tools.mjs/plugin.mjs; orchestrator re-ran npm test 124/0"
+  ]
+ },
  "items": [
   {
    "id": "T1",
@@ -333,6 +341,12 @@
    "iteration": 6,
    "what": "T7 review: both Minors deferred",
    "why": "malformed pause files are hardening outside the item description (the core itself writes sidecall.json with {at, reason}); severity rule says Minor -> defer. The 'secret visible in the reason' note is raised again in the T8 review",
+   "rejected": ""
+  },
+  {
+   "iteration": 7,
+   "what": "T6: real defect found live and fixed (deny list never applied on dsh web)",
+   "why": "on the web profile model tools live on the agent plane, tools.schemas() global view returned only working_directory, so applyDeny dropped every name and catalog.json was tiny; fix = schemas(agent). Regression tests first (2, mutation-checked). Open question for T8 review: restrict throws for scope-local names, one bad name fails the whole batch (caught + logged, nothing restricted)",
    "rejected": ""
   }
  ],

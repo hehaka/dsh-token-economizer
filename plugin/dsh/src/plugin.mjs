@@ -195,7 +195,7 @@ export function createPlugin(ctx, options) {
       const session = agent?.session;
       if (!session || !isRoot(session)) return;
       observeRoute(agent.options);
-      const known = toolNames(service('tools'));
+      const known = toolNames(service('tools'), agent);
       writeCatalog(stateRoot, known);
       if (config.applyDeny === false) return;
       const deny = readDeny(session.header?.cwd || process.cwd());

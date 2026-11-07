@@ -87,6 +87,28 @@ test('an agent is created: the tool list is recorded and the deny list hides its
   assert.deepEqual(JSON.parse(readFileSync(catalogPath(state), 'utf8')).tools, [...ALL].sort());   // the full list, not the masked one
 });
 
+// DSH's web profile puts the model-facing tools on the agent plane (an ancestor layer of the agent's
+// scope), so the registry's global view lists almost nothing (found live: `working_directory` only) and only
+// `schemas(agent)` shows what the agent can call and what `restrict` accepts.
+const scoped = (globalNames, byAgent) => ({
+  schemas: (scope) => (scope ? byAgent : globalNames).map((name) => ({ name, description: '', parameters: {} })),
+});
+
+test('the registry is read as the agent sees it: tools on the agent plane are known, recorded and hidden', async () => {
+  const { repo, ctx, state } = setup();
+  ctx.tools = scoped(['working_directory'], [...ALL, 'working_directory']);
+  writeDeny(repo, ['mcp__crm__update', 'bash']);
+  const { restricted, agent } = strictAgent([...ALL, 'working_directory']);
+  await ctx.handlers['agent/created'][0]({ agent: agent(rootSession('a1', repo)), source: 'new' });
+  assert.deepEqual(restricted, ['mcp__crm__update', 'bash']);                                          // not dropped as "unknown"
+  assert.deepEqual(JSON.parse(readFileSync(catalogPath(state), 'utf8')).tools, [...ALL, 'working_directory'].sort());
+});
+
+test('toolNames passes the viewing scope on to the registry', () => {
+  assert.deepEqual(toolNames(scoped(['g'], ['a', 'b']), { id: 'agent' }), ['a', 'b']);
+  assert.deepEqual(toolNames(scoped(['g'], ['a', 'b'])), ['g']);                                       // no scope: the global view, as before
+});
+
 test('a subagent is not restricted, and its tools are not the catalog\'s business', async () => {
   const { repo, ctx, state } = setup();
   writeDeny(repo, ['mcp__crm__update']);

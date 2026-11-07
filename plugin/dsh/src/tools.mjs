@@ -24,10 +24,14 @@ export function readDeny(cwd, file = DENY_FILE) {
   }
 }
 
-/** The names of the tools DSH offers (a snapshot of its registry), sorted; [] without a registry. */
-export function toolNames(tools) {
+/**
+ * The names of the tools DSH offers (a snapshot of its registry), sorted; [] without a registry.
+ * `scope` is the viewing agent: DSH's web profile registers its model-facing tools on the agent plane,
+ * so the global view (no scope) lists almost nothing there and `restrict` knows only the agent's view.
+ */
+export function toolNames(tools, scope) {
   try {
-    const schemas = typeof tools?.schemas === 'function' ? tools.schemas() : [];
+    const schemas = typeof tools?.schemas === 'function' ? tools.schemas(scope) : [];
     return [...new Set((Array.isArray(schemas) ? schemas : []).map((s) => s?.name).filter((n) => typeof n === 'string' && n))].sort();
   } catch {
     return [];

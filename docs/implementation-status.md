@@ -6,10 +6,10 @@
 - instruction: -
 - base commit: 9b892dd
 - DoD: docs/dod.md, frozen sha256 b763c64898e3d5cbaa2b97b53ff6daee318ab08bcb3f8dbd7590d1acd405b0d9
-- iteration: 6 / 18
-- subagent calls: 15 / 180
+- iteration: 7 / 18
+- subagent calls: 17 / 180
 - last commit: 1b7e8ba
-- open iteration: none
+- open iteration: 7, item T6, fix rounds 0, started at 629a92f
 - goal: goal-cd2e4c05-0c18-4e76-ab00-084d5e002fb9, active
 
 ## DoD
@@ -56,7 +56,6 @@ RESULT: FAIL (1 of 12 command criteria failed) (iteration 6, report docs/iterati
 - it6 T7: done, commit 1b7e8ba, fix rounds 0
 
 ## Last 10 decisions (all: docs/iterations/decisions.md)
-- it0: D7 command fixed before freeze. Why: the plan's D7 grep pattern with \\\| escapes matched everything (empty ERE alternative), so D7 could never pass; replaced by an awk check of severity/disposition columns, tested on open-high, fixed-high and missing file. Rejected: keeping the plan wording.
 - it0: no instruction file. Why: plan has none, repo has no docs/development-instruction.md; repo CLAUDE.md conventions and gates (pytest tests experiments/tests, npm test) apply; commit messages in repo style, no push until End (user asked to push earlier work, final push at End needs the 'cannot decide' rule: push was already authorised in this session for this branch).
 - it1: D5/D13 pass vacuously today. Why: browser-check.mjs ignores unknown flags, so --prune/--only panel run the old 4 checks and pass; T6 must make unknown flags exit 2 and --prune/--only select real new checks, so the DoD commands are meaningful.
 - it2: T3 TDD skipped. Why: the deliverable is itself a live test script; its red state is D2 failing now (script missing, exit 1); a model-free test of a script that needs a real model adds nothing. Treated as one implementer call plus the Node/Python tests for the small plugin change (provider in the reply).
@@ -66,6 +65,7 @@ RESULT: FAIL (1 of 12 command criteria failed) (iteration 6, report docs/iterati
 - it3: T4 tests are characterization tests, production code expected unchanged. Why: observeRoute(agent.options) already exists and was verified by the spike; the red state is D3 (live route group missing). NO_ROUTE live outcome is a race with agent/created, so the live check accepts either clean NO_ROUTE (no pause, zero charge) or success on the session's route; the deterministic NO_ROUTE path is covered by an offline Node test.
 - it3: T4 not reviewed by a second model. Why: production code unchanged; only characterization tests and a live script, validated by mutation checks (isRoot guard, observeRoute(agent.options)) and live runs; the final T8 review covers the whole diff.
 - it6: T7 review: both Minors deferred. Why: malformed pause files are hardening outside the item description (the core itself writes sidecall.json with {at, reason}); severity rule says Minor -> defer. The 'secret visible in the reason' note is raised again in the T8 review.
+- it7: T6: real defect found live and fixed (deny list never applied on dsh web). Why: on the web profile model tools live on the agent plane, tools.schemas() global view returned only working_directory, so applyDeny dropped every name and catalog.json was tiny; fix = schemas(agent). Regression tests first (2, mutation-checked). Open question for T8 review: restrict throws for scope-local names, one bad name fails the whole batch (caught + logged, nothing restricted).
 
 ## Deferred
 - T3: live-sidecall redactor also masks the key cache_creation_input_tokens in printed replies (cosmetic)
