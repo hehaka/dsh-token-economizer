@@ -48,6 +48,7 @@ import time
 
 from .. import trace
 from . import adapter as live_adapter
+from .json_shape import check_list_shape
 
 SETTINGS_REL = os.path.join(".claude", "settings.local.json")
 CODEX_CONFIG_REL = os.path.join(".codex", "config.toml")
@@ -251,6 +252,7 @@ def _apply_json_list(repo_root, items, store, host):
     created = not os.path.exists(path)
     data = _read_settings(path)
     outer, key = _json_list_keys(host)
+    check_list_shape(path, data, outer, key)
     holder = data.setdefault(outer, {}) if outer else data
     lst = holder.setdefault(key, [])
     added = [t for t in items if t not in lst]
@@ -275,6 +277,7 @@ def _restore_json_list(repo_root, store, items, host):
     _guard_target(repo_root, path)
     data = _read_settings(path)
     outer, key = _json_list_keys(host)
+    check_list_shape(path, data, outer, key)
     holder = (data.get(outer) or {}) if outer else data
     lst = holder.get(key) or []
     kept = [r for r in lst if r not in target]

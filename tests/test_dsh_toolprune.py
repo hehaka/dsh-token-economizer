@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from tokeneconomizer.plugin import adapter, denylist
+from tokeneconomizer.plugin import adapter, denylist, dsh_catalog
 from tokeneconomizer.plugin.hook import run
 from tokeneconomizer.plugin.paths import repo_identity, repo_state_dir
 from tokeneconomizer.plugin.store import Store
@@ -206,3 +206,114 @@ def test_shadow_mode_never_writes_the_file(repo_env, tmp_path):
     for n in (1, 2, 3):
         _live(repo, env, tmp_path, n, [("bash", {"command": "ls"}, "ok", False)])
     assert not os.path.exists(denylist.settings_path(repo, "dsh"))
+
+
+# ---- G3: the host-wide catalog is the LAST session's tool list, of ANY repository ---------------
+import hashlib  # noqa: E402
+
+
+def _own_catalog(env, repo_root, tools):
+    """What the plugin writes next to the host-wide file: `catalogs/<sha1(repo root)[:16]>.json`."""
+    key = hashlib.sha1(repo_root.encode("utf-8")).hexdigest()[:16]
+    path = os.path.join(env["TOKENECONOMIZER_HOME"], "hosts", "dsh", "catalogs", key + ".json")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    json.dump({"tools": tools, "host": "dsh"}, open(path, "w"))
+    return path
+
+
+def test_a_repos_own_catalog_is_not_polluted_by_another_repos_tools(repo_env, tmp_path):
+    repo, env, store = repo_env
+    root = repo_identity(repo, env).root
+    # Repo A's session was the last to start: the host-wide file holds A's mcp tools.
+    _catalog(env, CATALOG)
+    # This repository's own sessions never had the crm tools.
+    _own_catalog(env, root, ["bash", "read", "edit", "tool_call", "tool_search", "mcp__docs__lookup"])
+    for n in (1, 2, 3):
+        _live(repo, env, tmp_path, n, [("bash", {"command": "ls"}, "ok", False)])
+    unt = store.read("untool.json")
+    assert "mcp__crm__search" not in unt["catalog_tools"] and "mcp__crm__update" not in unt["catalog_tools"]
+    assert set(denylist.applied_for(store, repo, "dsh")) == {"mcp__docs__lookup"}
+
+
+def test_the_host_wide_catalog_is_still_the_fallback_without_an_own_file(repo_env, tmp_path):
+    repo, env, store = repo_env
+    _catalog(env, CATALOG)
+    other = os.path.join(str(tmp_path), "elsewhere")                      # another repository's file
+    _own_catalog(env, other, ["bash", "mcp__other__tool"])
+    for n in (1, 2, 3):
+        _live(repo, env, tmp_path, n, [("bash", {"command": "ls"}, "ok", False)])
+    assert set(denylist.applied_for(store, repo, "dsh")) == {"mcp__crm__search", "mcp__crm__update",
+                                                             "mcp__docs__lookup"}
+
+
+def test_load_catalog_prefers_the_repos_file_and_keeps_its_old_signature(tmp_path):
+    home = str(tmp_path)
+    path = adapter.catalog_path(home, "dsh")
+    os.makedirs(os.path.dirname(path))
+    json.dump({"tools": ["g1", "g2"]}, open(path, "w"))
+    assert adapter.load_catalog(home, "dsh") == {"g1": "", "g2": ""}              # the old two-argument call
+    assert adapter.load_catalog(home, "dsh", "/r/a") == {"g1": "", "g2": ""}      # no file of its own
+    own = dsh_catalog.repo_catalog_path(home, "dsh", "/r/a")
+    assert own == os.path.join(home, "hosts", "dsh", "catalogs", hashlib.sha1(b"/r/a").hexdigest()[:16] + ".json")
+    assert os.path.basename(own) == "124e753dd7ff7c84.json"                       # the plugin's tools.test.mjs pins the same
+    os.makedirs(os.path.dirname(own))
+    json.dump({"tools": ["a1"]}, open(own, "w"))
+    assert adapter.load_catalog(home, "dsh", "/r/a") == {"a1": ""}
+    assert adapter.load_catalog(home, "dsh", "/r/b") == {"g1": "", "g2": ""}      # another repo: the fallback
+    assert adapter.load_catalog(home, "dsh") == {"g1": "", "g2": ""}
+    open(own, "w").write("{ broken")                          # a damaged own file: nothing known, never another repo's tools
+    assert adapter.load_catalog(home, "dsh", "/r/a") == {}
+    assert adapter.load_catalog(str(tmp_path / "none"), "dsh", "/r/a") == {}
+
+
+# ---- G5: a hand-edited settings file of the wrong shape is refused, never changed ---------------
+BAD_SHAPES = [
+    pytest.param({"tokeneconomizer": "x"}, id="te-str"),
+    pytest.param({"tokeneconomizer": ["a"]}, id="te-list"),
+    pytest.param({"tokeneconomizer": None}, id="te-null"),
+    pytest.param({"tokeneconomizer": {"deny": "mcp__a__b"}}, id="deny-str"),
+    pytest.param({"tokeneconomizer": {"deny": {"a": 1}}}, id="deny-dict"),
+    pytest.param({"tokeneconomizer": {"deny": None}}, id="deny-null"),
+    pytest.param({"tokeneconomizer": {"deny": 7}}, id="deny-number"),
+]
+
+
+def _raw(path, doc):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as fh:
+        fh.write(json.dumps(doc, indent=1) + "\n")           # the person's own formatting
+    return open(path, "rb").read()
+
+
+@pytest.mark.parametrize("doc", BAD_SHAPES)
+def test_apply_refuses_a_misshapen_deny_list_and_leaves_the_file_alone(repo_env, doc):
+    repo, env, store = repo_env
+    path = denylist.settings_path(repo, "dsh")
+    before = _raw(path, doc)
+    with pytest.raises(RuntimeError, match="refusing to edit"):
+        denylist.apply(repo, ["mcp__crm__update"], store, host="dsh")
+    assert open(path, "rb").read() == before
+    assert denylist.applied_for(store, repo, "dsh") == []     # nothing was recorded as the plugin's
+
+
+@pytest.mark.parametrize("doc", BAD_SHAPES)
+def test_restore_refuses_a_misshapen_deny_list_and_leaves_the_file_alone(repo_env, doc):
+    repo, env, store = repo_env
+    denylist.apply(repo, ["mcp__crm__update"], store, host="dsh")      # the plugin's own entry ...
+    path = denylist.settings_path(repo, "dsh")
+    before = _raw(path, doc)                                           # ... then the person edits the file by hand
+    with pytest.raises(RuntimeError, match="refusing to edit"):
+        denylist.restore(repo, store, host="dsh")
+    assert open(path, "rb").read() == before                           # not a list of characters, not emptied
+    assert denylist.applied_for(store, repo, "dsh") == ["mcp__crm__update"]   # and the record is kept
+
+
+def test_a_misshapen_file_stops_the_pending_write_without_a_crash(repo_env, tmp_path):
+    repo, env, store = repo_env
+    path = denylist.settings_path(repo, "dsh")
+    before = _raw(path, {"tokeneconomizer": {"deny": "mcp__a__b"}})
+    _catalog(env, CATALOG)
+    for n in (1, 2, 3):
+        _live(repo, env, tmp_path, n, [("bash", {"command": "ls"}, "ok", False)])   # the fold must survive it
+    assert open(path, "rb").read() == before
+    assert denylist.applied_for(store, repo, "dsh") == []

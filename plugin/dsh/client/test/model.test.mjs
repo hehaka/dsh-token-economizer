@@ -156,3 +156,47 @@ test('the view state of a panel answer carries the model calls from its side dat
   assert.equal(state(STATUS).model.modelCalls?.state, 'unknown');
   assert.equal(state({ ...PANEL, side: SIDE_PAUSED }).model.repo, 'acme/widget');
 });
+
+// ---- G6: a damaged pause is still a pause; only a missing `side` is unknown ---------------------
+test('G6: any pause value that is not null or false is a pause, whatever its shape', () => {
+  for (const paused of [true, [], ['x'], 'yes', 1, 0, '', {}, { reason: 7 }, { reason: ['x'] }, { at: 'now' }]) {
+    const c = calls({ ...PANEL, side: { paused, host: 'dsh' } });
+    assert.equal(c.state, 'paused', `paused=${JSON.stringify(paused)}`);
+    assert.match(c.detail, /te config set microskills\|loopguard/);
+  }
+  for (const paused of [null, false]) assert.equal(calls({ ...PANEL, side: { paused, host: 'dsh' } }).state, 'active', `paused=${paused}`);
+});
+
+test('G6: only a missing side is unknown, also through the view state', () => {
+  assert.equal(calls({ ...PANEL, side: undefined }).state, 'unknown');
+  const state = (obj) => toViewState(ok(JSON.stringify(obj)));
+  assert.equal(state({ ...PANEL, side: 'broken' }).model.modelCalls.state, 'unknown');         // not an object at all: no side data
+  assert.equal(state({ ...PANEL, side: { paused: true } }).model.modelCalls.state, 'paused');
+  assert.equal(state({ ...PANEL, side: { paused: 'x' } }).model.modelCalls.state, 'paused');
+});
+
+test('G6: the reason is shown only when it is a string', () => {
+  assert.match(calls({ ...PANEL, side: { paused: { reason: 'Please run /login' } } }).detail, /^Please run \/login · paused until/);
+  for (const reason of [7, ['x'], { a: 1 }, true, null]) {
+    assert.match(calls({ ...PANEL, side: { paused: { reason } } }).detail, /^paused until/, `reason=${JSON.stringify(reason)}`);
+  }
+  assert.match(calls({ ...PANEL, side: { paused: 'Please run /login' } }).detail, /^paused until/);    // a string pause has no reason field
+});
+
+// ---- G7: the tool-pruning detail is bounded, and `proposal` counts only as an array --------------
+test('G7: the tool-pruning detail is capped at 300 characters', () => {
+  const long = withTools({ applied: ['a'.repeat(500), 'b', 'c'], catalog_source: 'x'.repeat(500) }, { notes: { toolprune: 'n'.repeat(900) } });
+  const d = detailOf(long);
+  assert.ok(d.length <= 300, `capped: ${d.length}`);
+  assert.ok(d.startsWith('n'.repeat(50)), 'the start is kept');
+  const short = detailOf(withTools({ applied: ['a'], proposal: [], catalog_source: 'x' }));
+  assert.ok(short.length < 300 && !short.endsWith('…'), 'a short detail is left as it is');
+  assert.equal(detailOf(withTools({ applied: ['z'.repeat(298)], catalog_source: null })).length <= 300, true);
+});
+
+test('G7: a proposal that is not an array is not counted', () => {
+  for (const proposal of [{ length: 9 }, 'abcdefghi', 9, null, { a: 1 }]) {
+    assert.match(detailOf(withTools({ applied: [], proposal, catalog_source: 'x' })), /0 proposed/, JSON.stringify(proposal));
+  }
+  assert.match(detailOf(withTools({ applied: [], proposal: ['a', 'b'], catalog_source: 'x' })), /2 proposed/);
+});

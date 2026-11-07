@@ -467,7 +467,7 @@ def fold_locked(ctx, session_id, transcript_path=None, imported=False, span=None
             run_dir = _run_dir(workdir, trace_path)
             # An earlier session is scored against the tools its own log shows (used, listed),
             # never today's catalog: a tool installed since would count as unused in it.
-            catalog = {} if imported else load_catalog(ctx.root, ctx.host.name)
+            catalog = {} if imported else load_catalog(ctx.root, ctx.host.name, ctx.repo.root)
             adapter = LiveAdapter(ctx.host, ctx.repo.root, vocabulary=ctx.config.vocabulary,
                                   catalog=catalog, protect=ctx.config.toolprune_protect)
             with ctx.store.locked("mechanisms"):

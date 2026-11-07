@@ -20,7 +20,7 @@ import { disabled, findBootstrap, runHook } from './bridge.mjs';
 import { runTe } from './command.mjs';
 import { ENV_FILE, ENV_SESSION, createSidecall } from './sidecall.mjs';
 import { Spool, parseArgs, spoolPath, textOf } from './spool.mjs';
-import { applyDeny, readDeny, toolNames, writeCatalog } from './tools.mjs';
+import { applyDeny, readDeny, repoRoot, toolNames, writeCatalog } from './tools.mjs';
 
 export const NAME = 'token-economizer';
 const CONTEXT_NAME = 'tokeneconomizer';
@@ -207,11 +207,12 @@ export function createPlugin(ctx, options) {
       if (!session || !isRoot(session)) return;
       observeRoute(agent.options, sessionKey(session));
       const known = toolNames(service('tools'), agent);
-      writeCatalog(stateRoot, known);
+      const cwd = session.header?.cwd || process.cwd();
+      writeCatalog(stateRoot, known, repoRoot(cwd));
       if (config.applyDeny === false) return;
-      const deny = readDeny(session.header?.cwd || process.cwd());
+      const deny = readDeny(cwd);
       if (!deny.length) return;
-      const hidden = applyDeny(agent, deny, known);
+      const hidden = applyDeny(agent, deny, known, (m) => log('warn', m));
       if (hidden.length) log('info', `tool pruning: ${hidden.length} tool(s) hidden from this session`);
     } catch (err) {
       log('warn', `tool pruning not applied: ${err?.message ?? err}`);

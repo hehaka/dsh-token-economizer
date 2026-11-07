@@ -132,3 +132,19 @@ test('the Model calls row is drawn for an empty ledger too', () => {
   const model = buildModel({ ...PANEL, status: { ...STATUS, ledger: { ...STATUS.ledger, sessions: 0 } }, side: { paused: null, host: 'dsh' } });
   assert.ok(tags(StatusView({ view: { state: 'ready', model }, onRefresh() {} })).includes('modelcalls'));
 });
+
+// ---- G7: a long unbroken detail wraps instead of widening the panel ------------------------------
+test('G7: the mechanism and model-call details wrap long words', () => {
+  const { react } = fakeReact();
+  const { StatusView } = createViews(react);
+  const status = { ...STATUS, toolprune: { ...STATUS.toolprune, applied: ['mcp__' + 'x'.repeat(200)], catalog_source: 'c' } };
+  const model = buildModel({ ...PANEL, status, side: { paused: true } });
+  const tree = StatusView({ view: { state: 'ready', model }, onRefresh() {} });
+  for (const key of ['mechanism-toolprune', 'modelcalls']) {
+    const card = marked(tree).find((n) => n.props['data-te'] === key);
+    const detail = findAll(card, (e) => typeof e.type === 'string' && textOf(e) === (key === 'modelcalls' ? model.modelCalls.detail : model.mechanisms[1].detail));
+    assert.equal(detail.length, 1, `${key} detail element`);
+    const style = detail[0].props.style;
+    assert.ok(style.overflowWrap === 'anywhere' || style.overflowWrap === 'break-word' || style.wordBreak === 'break-word' || style.wordBreak === 'break-all', `${key} wraps: ${JSON.stringify(style)}`);
+  }
+});

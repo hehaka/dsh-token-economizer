@@ -32,6 +32,7 @@ from .. import trace
 from ..loopguard import state_from_trajectory
 from ..microskills import GENERIC, NODE_WEB, PYTHON_GIT
 from ..toolprune.tools import PROTECTED_TOOLS
+from .dsh_catalog import own_catalog_path
 
 # Tools a person relies on in an interactive session, beyond the benchmark work surface.
 INTERACTIVE_PROTECTED = frozenset({
@@ -97,10 +98,12 @@ def catalog_path(state_root, host):
     return os.path.join(state_root, "hosts", host, "catalog.json")
 
 
-def load_catalog(state_root, host):
-    """{tool: description} from the last `te toolprune refresh-catalog` probe, {} if none."""
+def load_catalog(state_root, host, repo_root=None):
+    """{tool: description} from the last `te toolprune refresh-catalog` probe, {} if none; the
+    repository's own file first when there is one (DSH)."""
     try:
-        with open(catalog_path(state_root, host), encoding="utf-8") as fh:
+        with open(own_catalog_path(state_root, host, repo_root) or catalog_path(state_root, host),
+                  encoding="utf-8") as fh:
             data = json.load(fh)
         return {t: "" for t in data.get("tools", []) if isinstance(t, str)}
     except (OSError, ValueError):

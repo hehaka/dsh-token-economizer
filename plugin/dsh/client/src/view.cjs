@@ -10,6 +10,7 @@ const S = {
   head: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   title: { fontWeight: 600, fontSize: 14 },
   muted: { opacity: 0.65 },
+  detail: { opacity: 0.65, fontSize: 12, overflowWrap: 'anywhere', wordBreak: 'break-word' },     // a long tool name wraps instead of widening the panel
   card: { border: '1px solid color-mix(in srgb, currentColor 14%, transparent)', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 },
   row: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
   big: { fontSize: 20, fontWeight: 600, fontVariantNumeric: 'tabular-nums' },
@@ -33,13 +34,13 @@ function createViews(React) {
   const Mechanism = ({ m }) =>
     h('div', { style: S.card, 'data-te': `mechanism-${m.key}` },
       h('div', { style: S.row }, h('span', { style: { fontWeight: 600 } }, m.title), h('span', { style: S.pill }, m.mode)),
-      h('div', { style: { ...S.muted, fontSize: 12 } }, m.detail));
+      h('div', { style: S.detail }, m.detail));
 
   const CALLS_BADGE = { active: S.pill, paused: { ...S.pill, ...S.warn }, unknown: S.pill };
   const ModelCalls = ({ c }) =>
     h('div', { style: S.card, 'data-te': 'modelcalls' },
       h('div', { style: S.row }, h('span', { style: { fontWeight: 600 } }, c.title), h('span', { style: CALLS_BADGE[c.state] ?? S.pill, 'data-te': 'modelcalls-state' }, c.state)),
-      h('div', { style: { ...S.muted, fontSize: 12 } }, c.detail));
+      h('div', { style: S.detail }, c.detail));
 
   const { Columns, Line, Legend, Sized } = createCharts(React);
 

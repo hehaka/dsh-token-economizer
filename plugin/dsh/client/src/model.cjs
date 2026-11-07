@@ -50,22 +50,27 @@ function toViewState(exec) {
 
 const MAX_REASON = 120;
 const MAX_NAMES = 3;
+const MAX_DETAIL = 300;
 
 /** What tool pruning did: applied (first few by name), proposed, and where the tool list came from. */
 function toolpruneDetail(tp, note) {
   const applied = Array.isArray(tp.applied) ? tp.applied.map(String) : [];
   const names = applied.slice(0, MAX_NAMES).join(', ');
   const more = applied.length > MAX_NAMES ? ', …' : '';
-  const counts = `${applied.length} applied${names ? ` (${names}${more})` : ''} · ${(tp.proposal ?? []).length} proposed · catalog: ${tp.catalog_source || 'none yet'}`;
-  return typeof note === 'string' && note ? `${note} · ${counts}` : counts;
+  const proposed = Array.isArray(tp.proposal) ? tp.proposal.length : 0;
+  const counts = `${applied.length} applied${names ? ` (${names}${more})` : ''} · ${proposed} proposed · catalog: ${tp.catalog_source || 'none yet'}`;
+  const text = typeof note === 'string' && note ? `${note} · ${counts}` : counts;
+  return text.length > MAX_DETAIL ? `${text.slice(0, MAX_DETAIL - 1)}…` : text;
 }
 
 /** The core's `side` -> the Model calls row: the model calls the plugin makes itself, active or paused. */
 function modelCalls(side) {
   const base = { key: 'modelcalls', title: 'Model calls' };
-  if (!isObject(side) || !('paused' in side)) return { ...base, state: 'unknown', detail: 'no data' };
-  if (!isObject(side.paused)) return { ...base, state: 'active', detail: "answered through DSH's model service" };
-  const reason = typeof side.paused.reason === 'string' ? side.paused.reason.slice(0, MAX_REASON) : '';
+  if (!isObject(side) || side.paused === undefined) return { ...base, state: 'unknown', detail: 'no data' };
+  // A damaged pause (any value but null or false, whatever its shape) is still a pause.
+  if (side.paused === null || side.paused === false) return { ...base, state: 'active', detail: "answered through DSH's model service" };
+  const raw = isObject(side.paused) ? side.paused.reason : undefined;
+  const reason = typeof raw === 'string' ? raw.slice(0, MAX_REASON) : '';
   return { ...base, state: 'paused',
     detail: `${reason ? `${reason} · ` : ''}paused until you set microskills or loopguard again (te config set microskills|loopguard <mode>)` };
 }
