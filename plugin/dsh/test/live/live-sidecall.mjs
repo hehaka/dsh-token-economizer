@@ -11,13 +11,20 @@
 //          session's provider); the endpoint's raw reply says what ran. Each hook process runs ONE
 //          variant (DSH kills a hook after 20 s), so the session makes three separate bash calls =
 //          three PostToolUse hooks; fewer than three variant rows fails the checks.
-//   route  (task T4) not implemented yet.
+//   route  (task T4) one session, env TE_LIVE_ROUTE=1: the stub core runs the real runner with
+//          `paid_model` "" ONCE on each of SessionStart, UserPromptSubmit and PostToolUse and records the
+//          raw reply plus what a mechanism would charge. Checks: SessionStart (before `agent/created`,
+//          so possibly no route yet) is either a clean NO_ROUTE (empty text, charge 0) or a success on
+//          the session's route (it raced `agent/created`; which one happened is printed as INFO);
+//          UserPromptSubmit (after `agent/created`, before the first model request) and PostToolUse
+//          succeed on the session's provider/model; the host's side calls are not paused; all three
+//          rows exist. The session's route is read from its log (`request/context`).
 // State goes to a temp directory (TOKENECONOMIZER_HOME, CLAUDE_CONFIG_DIR). Credentials come from
 // the profile's `.env`; the script never prints them itself. What it prints from provider-supplied
 // text (`row.error`, the raw reply fields other than `text`, setup errors, the stderr tail) goes
 // through redact(): cut to 200 characters, any run of 24+ [A-Za-z0-9_-] replaced by <redacted>.
 // That is a best-effort filter for key-like tokens, not a proof that nothing secret is shown.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   HERE, REPO, arg, dsh as runDsh, fakeGitRepo, jsonl, loadProfileEnv, makeChecker, overlay as makeOverlay,
@@ -43,7 +50,6 @@ const profile = arg('--profile', 'headless');
 const paidA = arg('--paid-a', 'azure-openai-responses/gpt-6-luna');
 const paidB = arg('--paid-b', 'claude-sonnet-5-5');
 const { check, summary } = makeChecker();
-let notImplemented = false;
 
 /** Best-effort scrub of provider-supplied text before printing: 200 chars, long token-like runs hidden. */
 const redact = (v) => String(v ?? '').slice(0, 200).replace(/[A-Za-z0-9_-]{24,}/g, '<redacted>');
@@ -106,11 +112,62 @@ async function paidGroup() {
   return work;
 }
 
+async function routeGroup() {
+  loadProfileEnv(profile);
+  const { work, pkg, entry } = prepareWork('te-dsh-live-route');
+  fakeGitRepo(join(work, 'repo'));
+  const stub = join(pkg, 'test-stub-core.py');
+  writeFileSync(stub, readFileSync(join(HERE, 'stub_core.py')));
+  const logFile = join(work, 'hooks.jsonl');
+  const sideFile = join(work, 'side.jsonl');
+  const stateDir = join(work, 'state');
+  const patch = makeOverlay(work, entry, 'stub', { bootstrap: stub });
+  const env = {
+    TOKENECONOMIZER_HOME: stateDir, CLAUDE_CONFIG_DIR: join(work, 'claude'), TE_FOLD_SYNC: '1',
+    TE_LIVE_LOG: logFile, TE_LIVE_SIDE: sideFile, TE_LIVE_ROUTE: '1', TE_LIVE_REPO: REPO,
+  };
+  const r = runDsh(work, ['--profile', profile, '--patch', patch,
+    'Use the bash tool to run `echo te-live-route`, then reply: done'], { ...env, TE_LIVE_RUNNER: '' }, 300_000);   // TE_LIVE_RUNNER blanked: route mode only
+  check('the headless run finished', r.status === 0, `exit ${r.status}`);
+  if (r.status !== 0) console.log(redact(tail(r.stderr)));
+
+  const calls = jsonl(logFile).map((x) => x.payload);
+  const spool = calls.find((p) => p.transcript_path)?.transcript_path;
+  const sid = spool && /session-[0-9a-f-]+/.exec(spool)?.[0];
+  const ctx = readSessionEvents(sid).find((e) => e.type === 'request/context');
+  const route = { provider: ctx?.data?.provider, model: ctx?.data?.model };
+  check('the session log names the session\'s route (request/context)', Boolean(route.provider && route.model),
+    route.provider ? `${route.provider}/${route.model}` : (sessionLogFile(sid) ? 'no request/context event' : 'session log not found'));
+
+  const rows = jsonl(sideFile);
+  const row = (phase) => rows.find((x) => x.phase === phase);
+  const names = ['SessionStart', 'UserPromptSubmit', 'PostToolUse'];
+  const hooked = names.filter((n) => calls.some((p) => p.hook_event_name === n));
+  check('all three rows exist (SessionStart, UserPromptSubmit, PostToolUse)', names.every((n) => row(n)),
+    `${rows.filter((x) => names.includes(x.phase)).length} of 3 row(s) found; rows: ${rows.map((x) => x.phase).join(', ') || 'none'}; hooks seen: ${hooked.join(', ') || 'none'}`);
+  const onRoute = (x) => x?.reply?.provider === route.provider && x?.reply?.model === route.model;
+  const succeeded = (x) => Boolean(x) && !x.error && typeof x.reply?.text === 'string' && Boolean(x.text) && onRoute(x);
+  const detail = (x) => (x ? `${x.reply?.provider}/${x.reply?.model} vs ${route.provider}/${route.model}, text ${JSON.stringify((x.text ?? '').slice(0, 30))}, effective ${x.effective}, charge ${x.charge}, error ${redact(x.error ?? x.reply?.error?.code ?? 'none')}` : 'no row');
+
+  const ss = row('SessionStart');
+  const clean = Boolean(ss) && ss.reply?.error?.code === 'NO_ROUTE' && !ss.text && ss.charge === 0;
+  const won = Boolean(ss) && succeeded(ss) && ss.effective > 0;
+  check('SessionStart: a clean NO_ROUTE (empty text, nothing charged) or a success on the session\'s route', clean || won,
+    detail(ss));
+  console.log(`INFO  SessionStart call: ${clean ? 'NO_ROUTE (the call came before agent/created)' : won ? 'success (the call raced agent/created and found the route)' : 'neither'}`);
+
+  const ups = row('UserPromptSubmit');
+  check('UserPromptSubmit: success on the session\'s provider/model, non-empty text, effective > 0',
+    succeeded(ups) && ups.effective > 0, detail(ups));
+  const pt = row('PostToolUse');
+  check('PostToolUse: success on the session\'s route', succeeded(pt), detail(pt));
+  check('the host\'s side calls were not paused', !existsSync(join(stateDir, 'hosts', 'dsh', 'sidecall.json')),
+    join(stateDir, 'hosts', 'dsh', 'sidecall.json'));
+  for (const x of rows) console.log(`  row[${x.phase ?? x.variant}]: ${redact(JSON.stringify({ ...x.reply, text: undefined }))} text=${JSON.stringify((x.text ?? '').slice(0, 60))} effective=${x.effective} charge=${x.charge}${x.error ? ` error=${redact(x.error)}` : ''}`);
+  return work;
+}
+
 let work = '(none)';
 if (only !== 'route') work = await paidGroup();
-if (only === undefined || only === 'route') {
-  console.log('route group: not implemented yet (task T4)');
-  notImplemented = true;
-}
-const failed = summary(work);
-process.exit(failed || notImplemented ? 1 : 0);
+if (only === undefined || only === 'route') work = await routeGroup();
+process.exit(summary(work) ? 1 : 0);

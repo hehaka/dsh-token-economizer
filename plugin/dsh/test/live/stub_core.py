@@ -60,10 +60,10 @@ class _Cfg:
         self.paid_model = paid_model
 
 
-def _claim(suffix):
+def _claim(suffix, kind="claim"):
     """Atomically take one marker file next to TE_LIVE_SIDE; False when another process has it."""
     try:
-        fd = os.open(os.environ["TE_LIVE_SIDE"] + ".claim." + suffix, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        fd = os.open(os.environ["TE_LIVE_SIDE"] + "." + kind + "." + suffix, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError:
         return False
     os.close(fd)
@@ -75,6 +75,43 @@ def _setup_row(error):
         with open(os.environ["TE_LIVE_SIDE"], "a", encoding="utf-8") as fh:
             fh.write(json.dumps({"variant": None, "text": "", "effective": None, "reply": None,
                                  "error": f"setup: {error}"}) + "\n")
+
+
+def _run_one(sidecall, dsh_sidecall, variant, prompt):
+    """One call through the core's real runner, the endpoint's raw reply kept beside what it returns:
+    `({text, effective, reply[, error]}, runner)`. A failed call is a finding, not a crash."""
+    row = {"text": "", "effective": None, "reply": None}
+    captured = []
+    real = dsh_sidecall.urllib.request.urlopen              # the one `dsh_sidecall.call` uses
+
+    def spy(*a, **kw):
+        try:
+            with real(*a, **kw) as resp:
+                data = resp.read()
+        except urllib.error.HTTPError as e:               # keep the endpoint's error body readable
+            data = e.read()
+            captured.append(data)
+            raise urllib.error.HTTPError(e.url, e.code, e.msg, e.hdrs, io.BytesIO(data))
+        captured.append(data)
+        return _Body(data)
+
+    runner = None
+    dsh_sidecall.urllib.request.urlopen = spy
+    try:
+        runner = sidecall.runner_for("dsh", _Cfg(variant))
+        row["text"], row["effective"] = runner(prompt)
+    except BaseException as e:                            # a failed call is a finding, not a crash
+        row["error"] = f"{type(e).__name__}: {e}"
+    finally:
+        dsh_sidecall.urllib.request.urlopen = real
+    if captured:
+        try:
+            row["reply"] = json.loads(captured[-1].decode("utf-8"))
+        except Exception:
+            row["error"] = (row.get("error", "") + f" unparsable reply {captured[-1][:200]!r}").strip()
+    if row["reply"] is None and "error" not in row:
+        row["error"] = "no reply captured from the endpoint"
+    return row, runner
 
 
 def runner_calls():
@@ -94,41 +131,42 @@ def runner_calls():
         _setup_row(f"{type(e).__name__}: {e}")
         return
     for variant in variants:
-        row = {"variant": variant, "text": "", "effective": None, "reply": None}
-        captured = []
-        real = dsh_sidecall.urllib.request.urlopen          # the one `dsh_sidecall.call` uses
-
-        def spy(*a, **kw):
-            try:
-                with real(*a, **kw) as resp:
-                    data = resp.read()
-            except urllib.error.HTTPError as e:           # keep the endpoint's error body readable
-                data = e.read()
-                captured.append(data)
-                raise urllib.error.HTTPError(e.url, e.code, e.msg, e.hdrs, io.BytesIO(data))
-            captured.append(data)
-            return _Body(data)
-
-        dsh_sidecall.urllib.request.urlopen = spy
-        try:
-            text, eff = sidecall.runner_for("dsh", _Cfg(variant))("Reply with the single word: pong")
-            row["text"], row["effective"] = text, eff
-        except BaseException as e:                        # a failed call is a finding, not a crash
-            row["error"] = f"{type(e).__name__}: {e}"
-        finally:
-            dsh_sidecall.urllib.request.urlopen = real
-        if captured:
-            try:
-                row["reply"] = json.loads(captured[-1].decode("utf-8"))
-            except Exception:
-                row["error"] = (row.get("error", "") + f" unparsable reply {captured[-1][:200]!r}").strip()
-        if row["reply"] is None and "error" not in row:
-            row["error"] = "no reply captured from the endpoint"
+        row, _runner = _run_one(sidecall, dsh_sidecall, variant, "Reply with the single word: pong")
+        row = dict({"variant": variant}, **row)
         with open(os.environ["TE_LIVE_SIDE"], "a", encoding="utf-8") as fh:   # at once: a hook has 20 s
             fh.write(json.dumps(row) + "\n")
 
 
-if ev in ("PostToolUse", "Stop", "SessionEnd") and os.environ.get("TE_LIVE_RUNNER") == "1" and os.environ.get("TE_LIVE_SIDE"):
+ROUTE_HOOKS = ("SessionStart", "UserPromptSubmit", "PostToolUse")
+
+
+def route_call(hook):
+    """TE_LIVE_ROUTE: the real runner on the session's own route, once per hook name per run; the row
+    says what came back and what a mechanism would charge for it (`pricing.runner_effective_or_approx`)."""
+    prompt = "Reply with the single word: pong"
+    row = {"phase": hook, "text": "", "effective": None, "charge": 0, "reply": None}
+    if not _claim(hook, "route"):
+        return
+    try:
+        sys.path.insert(0, os.environ["TE_LIVE_REPO"])
+        from tokeneconomizer import pricing
+        from tokeneconomizer.plugin import dsh_sidecall, sidecall
+        got, runner = _run_one(sidecall, dsh_sidecall, "", prompt)
+        row.update(got)
+        if runner is not None:
+            row["charge"] = pricing.runner_effective_or_approx(runner, prompt, row["text"], row["effective"])
+    except BaseException as e:                            # a failed call is a finding, not a crash
+        row["error"] = f"setup: {type(e).__name__}: {e}"
+    with open(os.environ["TE_LIVE_SIDE"], "a", encoding="utf-8") as fh:       # at once: a hook has 20 s
+        fh.write(json.dumps(row) + "\n")
+
+
+if ev in ROUTE_HOOKS and os.environ.get("TE_LIVE_ROUTE") == "1" and os.environ.get("TE_LIVE_SIDE"):
+    try:
+        route_call(ev)
+    except BaseException as e:                            # never raise out of the hook
+        print(f"stub_core route: {type(e).__name__}: {e}", file=sys.stderr)
+elif ev in ("PostToolUse", "Stop", "SessionEnd") and os.environ.get("TE_LIVE_RUNNER") == "1" and os.environ.get("TE_LIVE_SIDE"):
     try:
         runner_calls()
     except BaseException as e:                            # never raise out of the hook

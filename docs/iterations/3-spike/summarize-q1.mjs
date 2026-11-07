@@ -1,0 +1,24 @@
+// node docs/iterations/3-spike/summarize-q1.mjs   (reads q1.log.jsonl next to it)
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const rows = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'q1.log.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+const t0 = rows[0].t;
+const first = (f) => rows.find(f);
+const sc = first((r) => r.kind === 'session/created');
+const ac = first((r) => r.kind === 'agent/created');
+const rc = first((r) => r.kind === 'session/event' && r.type === 'request/context');
+const rh = first((r) => r.kind === 'session/event' && r.type === 'request/header');
+console.log('order:', rows.filter((r) => r.kind !== 'loaded').map((r) => (r.kind === 'session/event' ? r.type : r.kind)).join(' > '));
+console.log(`first-seen n: session/created=${sc.n} agent/created=${ac.n} request/header=${rh.n} request/context=${rc.n}`);
+console.log(`ms after session/created: agent/created=${ac.t - sc.t} request/context=${rc.t - sc.t}`);
+console.log('session/created header keys:', Object.keys(sc.headerFold ?? sc.headerKeys).join(','), '| modelish:', JSON.stringify(sc.modelish));
+console.log('agent keys:', Object.keys(ac.agent._self).join(','));
+console.log('agent.options:', JSON.stringify(ac.options), JSON.stringify(ac.optionsModelish));
+console.log('agent.session keys:', Object.keys(ac.session).join(','));
+console.log('agent.session.header keys:', Object.keys(ac.sessionHeader).join(','));
+console.log('agent.ctx own keys:', JSON.stringify(ac.ctx));
+console.log('modelish anywhere under agent (depth 4, excl. ctx):', JSON.stringify(ac.modelish));
+console.log('agentDefaultModel.currentSelection() at agent/created:', JSON.stringify(ac.defaultSelection));
+console.log('request/context:', JSON.stringify(rc.modelish));
+console.log('services:', rows.filter((r) => r.kind === 'service').map((r) => `${r.name}: ${r.methods.join(',')}`).join('\n  '));

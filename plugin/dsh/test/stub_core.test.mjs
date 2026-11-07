@@ -20,8 +20,9 @@ const REPLY = {
 };
 
 /** A loopback stand-in for the plugin's /v1/complete (as Fake in tests/test_dsh_sidecall.py).
- *  `barrier` (n, ms) holds every answer until n requests are in flight, or ms have passed. */
-async function fakeEndpoint({ barrier } = {}) {
+ *  `barrier` (n, ms) holds every answer until n requests are in flight, or ms have passed;
+ *  `answer` ({ status, doc }) replaces the 200 reply of an authorised call. */
+async function fakeEndpoint({ barrier, answer } = {}) {
   const token = 't0k3n';
   const requests = [];
   let inflight = 0;
@@ -43,8 +44,8 @@ async function fakeEndpoint({ barrier } = {}) {
       }
       inflight -= 1;
       const ok = req.method === 'POST' && req.url === '/v1/complete' && req.headers.authorization === `Bearer ${token}`;
-      const data = Buffer.from(JSON.stringify(ok ? REPLY : { error: 'refused' }));
-      res.writeHead(ok ? 200 : 403, { 'Content-Type': 'application/json', 'Content-Length': data.length });
+      const data = Buffer.from(JSON.stringify(ok ? (answer?.doc ?? REPLY) : { error: 'refused' }));
+      res.writeHead(ok ? (answer?.status ?? 200) : 403, { 'Content-Type': 'application/json', 'Content-Length': data.length });
       res.end(data);
     });
   });
@@ -68,7 +69,7 @@ async function setup(opts) {
 }
 
 /** Run `stub_core.py hook --host dsh` as the plugin does: the payload on stdin. Never rejects. */
-function hook(s, payload, { runner = true, paid = VARIANTS } = {}) {
+function hook(s, payload, { runner = true, paid = VARIANTS, route = false } = {}) {
   const env = {
     PATH: process.env.PATH ?? '',
     HOME: s.dir,
@@ -79,7 +80,8 @@ function hook(s, payload, { runner = true, paid = VARIANTS } = {}) {
     TE_LIVE_PAID: JSON.stringify(paid),
     TE_DSH_SIDECALL_FILE: s.endpointFile,
   };
-  if (runner) env.TE_LIVE_RUNNER = '1';
+  if (runner && !route) env.TE_LIVE_RUNNER = '1';
+  if (route) env.TE_LIVE_ROUTE = '1';
   return new Promise((resolve) => {
     const child = spawn(PYTHON, [STUB, 'hook', '--host', 'dsh'], { env, cwd: s.dir, stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '';
@@ -201,3 +203,68 @@ test('without TE_LIVE_RUNNER the raw side call is unchanged: one row, endpoint_e
   assert.equal(s.fake.requests.length, 1);
   assert.equal(s.fake.requests[0].body.prompt, 'Reply with the single word: pong');
 }));
+
+// ---- TE_LIVE_ROUTE: the real runner on the session's own route, once per hook name ----------------
+const prompt = { hook_event_name: 'UserPromptSubmit', session_id: 's1' };
+const phases = (s) => rows(s).map((r) => r.phase);
+
+test('TE_LIVE_ROUTE: one row per hook name (SessionStart, UserPromptSubmit, PostToolUse), a second payload of a name adds none', () => withSetup({}, async (s) => {
+  for (const [i, p] of [start, prompt, post].entries()) {
+    const r = await hook(s, p, { route: true });
+    assert.equal(r.code, 0, r.stderr);
+    assert.deepEqual(phases(s), ['SessionStart', 'UserPromptSubmit', 'PostToolUse'].slice(0, i + 1));
+    assert.equal(s.fake.requests.length, i + 1);
+  }
+  for (const p of [start, prompt, post, post]) await hook(s, p, { route: true });
+  assert.deepEqual(phases(s), ['SessionStart', 'UserPromptSubmit', 'PostToolUse'], 'no further row');
+  assert.equal(s.fake.requests.length, 3, 'no further request');
+  for (const row of rows(s)) {
+    assert.deepEqual(Object.keys(row).sort(), ['charge', 'effective', 'phase', 'reply', 'text']);
+    assert.equal(row.text, 'pong');
+    assert.deepEqual(row.reply, REPLY);
+    assert.ok(row.effective > 0 && row.charge === row.effective, 'a call that reported its usage is charged that usage');
+  }
+  for (const req of s.fake.requests) {
+    assert.equal(req.body.model, null, 'the session\'s own route: no paid_model');
+    assert.equal(req.body.prompt, 'Reply with the single word: pong');
+  }
+  assert.ok(existsSync(`${s.side}.route.SessionStart`), 'the marker is <TE_LIVE_SIDE>.route.<hook name>');
+}));
+
+test('TE_LIVE_ROUTE: other hooks make no call, and the hooks keep answering their notes', () => withSetup({}, async (s) => {
+  for (const p of [stop, end]) assert.equal((await hook(s, p, { route: true })).code, 0);
+  assert.deepEqual(rows(s), []);
+  assert.equal(s.fake.requests.length, 0);
+  const r = await hook(s, start, { route: true });
+  assert.deepEqual(JSON.parse(r.stdout), { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'TE-LIVE-FACTS-7f3a' } });
+  const p = await hook(s, post, { route: true });
+  assert.match(p.stdout, /TE-LIVE-REDIRECT-91bc/);
+}));
+
+test('TE_LIVE_ROUTE: a NO_ROUTE 409 is a row with the error body, nothing charged, and no pause', () => withSetup({ answer: { status: 409, doc: { error: { code: 'NO_ROUTE', message: 'no model route known yet' } } } }, async (s) => {
+  const r = await hook(s, start, { route: true });
+  assert.equal(r.code, 0, r.stderr);
+  const [row] = rows(s);
+  assert.equal(row.phase, 'SessionStart');
+  assert.equal(row.reply.error.code, 'NO_ROUTE');
+  assert.equal(row.text, '');
+  assert.equal(row.effective, null);
+  assert.equal(row.charge, 0);
+  assert.equal(row.error, undefined, 'the runner answered nothing, it did not fail');
+  assert.equal(existsSync(join(s.dir, 'state', 'hosts', 'dsh', 'sidecall.json')), false, 'the host\'s side calls are not paused');
+  assert.match(readFileSync(join(s.dir, 'state', 'errors.log'), 'utf8'), /sidecall dsh: no reply/);
+  // the next hook name still makes its own call
+  await hook(s, prompt, { route: true });
+  assert.deepEqual(phases(s), ['SessionStart', 'UserPromptSubmit']);
+  assert.equal(s.fake.requests.length, 2);
+}));
+
+test('TE_LIVE_ROUTE: a plugin that is gone is a row with an error and charge 0, and the hook still exits 0', async () => {
+  const s = await setup({});
+  await s.fake.close();
+  const r = await hook(s, start, { route: true });
+  assert.equal(r.code, 0, r.stderr);
+  const [row] = rows(s);
+  assert.deepEqual([row.phase, row.text, row.charge, row.reply], ['SessionStart', '', 0, null]);
+  assert.ok(row.error, 'no reply captured');
+});

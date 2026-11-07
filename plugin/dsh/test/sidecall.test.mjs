@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createPlugin } from '../src/plugin.mjs';
 import { ENV_FILE, MAX_BODY_BYTES, MAX_CONCURRENT, SidecallError, complete, createSidecall, endpointPath, ledgerUsage, parseModel, sweep } from '../src/sidecall.mjs';
-import { fakeCtx, fakeRepo, isolatedEnv, rootSession, tmp } from './helpers.mjs';
+import { fakeCtx, fakeRepo, isolatedEnv, rootSession, subSession, tmp } from './helpers.mjs';
 
 const SRC = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'src', 'sidecall.mjs');
 const ROUTE = { provider: 'anthropic', model: 'claude-haiku-5-5' };
@@ -334,6 +334,62 @@ test('the route a call runs on follows the session: its agent, then its requests
   ctx.handlers['session/event'][0](session, { type: 'request/context', seq: 2, time: 0, data: { provider: 5, model: null } });   // garbage changes nothing
   await call();
   assert.equal(llm.seen.prepared.at(-1).model, 'm2');
+  await p.stop();
+});
+
+// The route before the first request (docs/iterations/3-spike.md): `session/created` (the SessionStart
+// hook) comes before `agent/created`, which carries the creation-time route in `agent.options`.
+const callEndpoint = async (p) => {
+  const r = await fetch(`http://127.0.0.1:${p.sidecall.port}/v1/complete`, { method: 'POST', headers: { Authorization: `Bearer ${p.sidecall.token}` }, body: JSON.stringify({ prompt: 'q' }) });
+  return { status: r.status, doc: await r.json() };
+};
+const agentOf = (session, options) => ({ agent: { session, options, ctx: { tools: { restrict() {} } } } });
+const lastRoute = (llm) => [llm.seen.prepared.at(-1)?.provider, llm.seen.prepared.at(-1)?.model];
+
+test('before the session has any route a call is a clean NO_ROUTE (409) and reaches no model', async () => {
+  const llm = fakeLlm();
+  const { ctx, p, repo } = plugin({ llm });
+  ctx.handlers['session/created'][0](rootSession('s1', repo));               // SessionStart: no agent yet
+  await p.idle();
+  const r = await callEndpoint(p);
+  assert.equal(r.status, 409);
+  assert.equal(r.doc.error.code, 'NO_ROUTE');
+  assert.equal(llm.seen.prepared.length, 0, 'no model call, not even to a default model');
+  // an agent that carries no route (both fields are optional in the type) changes nothing
+  await ctx.handlers['agent/created'][0](agentOf(rootSession('s1', repo), {}));
+  await ctx.handlers['agent/created'][0](agentOf(rootSession('s1', repo), { provider: 'p1' }));
+  assert.equal((await callEndpoint(p)).status, 409);
+  assert.equal(llm.seen.prepared.length, 0);
+  await p.stop();
+});
+
+test('a root agent\'s route is the session\'s from agent/created on, before any request/context', async () => {
+  const llm = fakeLlm();
+  const { ctx, p, repo } = plugin({ llm });
+  ctx.handlers['session/created'][0](rootSession('s1', repo));
+  await p.idle();
+  assert.equal((await callEndpoint(p)).status, 409);
+  await ctx.handlers['agent/created'][0](agentOf(rootSession('s1', repo), { provider: 'pa', model: 'ma' }));
+  const r = await callEndpoint(p);                                           // no request/context event has been seen
+  assert.equal(r.status, 200);
+  assert.equal(r.doc.text, 'ok');
+  assert.deepEqual(lastRoute(llm), ['pa', 'ma']);
+  assert.equal(llm.seen.prepared.length, 1);
+  await p.stop();
+});
+
+test('a subagent\'s agent/created, with a route of its own, does not change the session\'s', async () => {
+  const llm = fakeLlm();
+  const { ctx, p, repo } = plugin({ llm });
+  ctx.handlers['session/created'][0](rootSession('s1', repo));
+  await p.idle();
+  // a subagent that is created first leaves the session without a route
+  await ctx.handlers['agent/created'][0](agentOf(subSession('c1', repo), { provider: 'sub', model: 'sub-model' }));
+  assert.equal((await callEndpoint(p)).status, 409);
+  await ctx.handlers['agent/created'][0](agentOf(rootSession('s1', repo), { provider: 'pa', model: 'ma' }));
+  await ctx.handlers['agent/created'][0](agentOf(subSession('c2', repo), { provider: 'sub', model: 'sub-model' }));
+  assert.equal((await callEndpoint(p)).status, 200);
+  assert.deepEqual(lastRoute(llm), ['pa', 'ma'], 'the root agent\'s route stands');
   await p.stop();
 });
 

@@ -162,6 +162,7 @@ def test_a_plugin_that_is_gone_is_no_answer_with_a_log_line(fake, state):
     (500, {"error": {"code": "MODEL", "message": "boom"}}),
     (413, {"error": {"code": "TOO_LARGE", "message": "too big"}}),
     (429, {"error": {"code": "BUSY", "message": "busy"}}),
+    (409, {"error": {"code": "NO_ROUTE", "message": "no model route yet"}}),   # a call before the session's route is known
     (401, {"error": {"code": "TE_AUTH", "message": "bad token"}}),          # the plugin's own door, not the provider
     (200, {"text": 5}),
     (200, {"error": {"code": "X", "message": "m"}, "text": "ignored"}),
@@ -194,6 +195,18 @@ def test_a_call_that_never_reached_a_model_is_estimated_at_nothing(fake):
     assert r("a long prompt " * 50) == ("", None)
     assert r.estimate_effective("a long prompt " * 50, "") == 0.0
     assert r.estimate_effective("prompt", "an answer with no usage") > 0   # a call that answered is
+
+
+def test_no_route_yet_is_no_answer_that_pauses_nothing_and_charges_nothing(fake, state):
+    fake.reply = (409, {"error": {"code": "NO_ROUTE", "message": "no model route known yet"}})
+    runner = dsh_sidecall.Runner(env=fake.env)
+    assert runner("p") == ("", None)
+    assert len(fake.requests) == 1                                        # it did reach the plugin
+    assert errors(state).count("sidecall dsh: no reply") == 1             # one line, no more
+    assert sidecall.paused("dsh", state) is None                          # the host's side calls go on
+    assert runner.estimate_effective("p", "") == 0.0                      # so a mechanism charges nothing for it
+    from tokeneconomizer import pricing
+    assert pricing.runner_effective_or_approx(runner, "p", "", None) == 0.0
 
 
 def test_a_call_that_takes_too_long_is_no_answer(fake, state):

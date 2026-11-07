@@ -8,9 +8,17 @@
  "base": "9b892dd",
  "max_iterations": 18,
  "budget": 180,
- "calls": 5,
- "iteration": 2,
- "open": null,
+ "calls": 7,
+ "iteration": 3,
+ "open": {
+  "k": 3,
+  "item": "T4",
+  "fix_rounds": 0,
+  "start": "7a9b897",
+  "notes": [
+   "T4 implemented by sonnet (tests + live route group, production code unchanged); orchestrator re-ran npm test 105/0 and live-sidecall --only route 7/7"
+  ]
+ },
  "items": [
   {
    "id": "T1",
@@ -306,10 +314,23 @@
    "what": "T3: no second review",
    "why": "fix round 1 is small and covered by 7 model-free tests (6 red before) plus live runs 13/13 and live-check 25/25; redactor masking the benign key cache_creation_input_tokens accepted as cosmetic",
    "rejected": ""
+  },
+  {
+   "iteration": 3,
+   "what": "T4 outcome of spike: keep agent.options as the route source, no agentDefaultModel fallback",
+   "why": "spike 3-spike.md: agent.options.provider/model is set at agent/created (live), before the first request/context; session/created (SessionStart) precedes agent/created by ~55 ms so a core call that races that window may get NO_ROUTE. agentDefaultModel is the profile default, not necessarily the session's model (resume/switch), so using it could bill an unexpected model",
+   "rejected": "agentDefaultModel fallback; delaying SessionStart until agent/created"
+  },
+  {
+   "iteration": 3,
+   "what": "T4 tests are characterization tests, production code expected unchanged",
+   "why": "observeRoute(agent.options) already exists and was verified by the spike; the red state is D3 (live route group missing). NO_ROUTE live outcome is a race with agent/created, so the live check accepts either clean NO_ROUTE (no pause, zero charge) or success on the session's route; the deterministic NO_ROUTE path is covered by an offline Node test",
+   "rejected": ""
   }
  ],
  "deferred": [
-  "T3: live-sidecall redactor also masks the key cache_creation_input_tokens in printed replies (cosmetic)"
+  "T3: live-sidecall redactor also masks the key cache_creation_input_tokens in printed replies (cosmetic)",
+  "multi-session in one DSH process: the route is process-global (last observed), the endpoint cannot tell which session a core call belongs to; a call could run on another session's model. Needs the session id on the request (core Runner change) - out of plan"
  ],
  "stop": "",
  "goal": {
