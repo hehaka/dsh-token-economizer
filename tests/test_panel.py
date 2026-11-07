@@ -1,11 +1,13 @@
 """`te panel`: the data a visual panel reads. Status unchanged, plus the recorded session series,
 with no estimate of what anything saved."""
 import json
+import os
+import time
 
 import pytest
 
 from tokeneconomizer import pricing
-from tokeneconomizer.plugin import cli, hosts, panel
+from tokeneconomizer.plugin import cli, hosts, panel, sidecall
 from tokeneconomizer.plugin.context import LiveContext
 
 
@@ -97,6 +99,8 @@ def run(tmp_path, monkeypatch, capsys):
             ctx.store.append("ledger.jsonl", r)
         assert cli.main(["--host", "dsh", "--cwd", str(repo), "panel", *options]) == 0
         return capsys.readouterr().out
+    go.ctx = ctx
+    go.repo = repo
     return go
 
 
@@ -126,3 +130,60 @@ def test_text_view_lists_recent_sessions_with_a_sparkline(run):
     out = run(rows=[rec(f"s{i}", 1000.0 + i, injected_chars=1 if i == 2 else 0) for i in range(12)])
     assert "12 finished session(s)" in out and "effective tokens" in out and "cache hit rate" in out
     assert out.count("claude-haiku-5-5") == 10 and out.count("(facts injected)") in (0, 1)
+
+
+# ---- `side`: whether the host's side calls (the model calls the plugin makes itself) are paused ----
+def pause_file(ctx, text):
+    path = os.path.join(ctx.root, "hosts", "dsh", "sidecall.json")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    return path
+
+
+def test_side_without_a_pause_file_says_not_paused_and_names_the_host(run):
+    data = json.loads(run("--json"))
+    assert data.get("side") == {"paused": None, "host": "dsh"}
+
+
+def test_side_carries_the_pause_reason_and_time_from_the_documented_file(run):
+    pause_file(run.ctx, json.dumps({"at": 1234.5, "reason": "Please run /login"}))
+    side = json.loads(run("--json")).get("side")
+    assert side is not None and side["host"] == "dsh"
+    assert side["paused"] == {"at": 1234.5, "reason": "Please run /login"}
+
+
+def test_side_follows_the_pause_the_sidecall_module_writes_and_lifts(run):
+    class Out:                                   # what a CLI that is not signed in answers
+        returncode, stdout, stderr = 1, "", "To authenticate, run the /login command"
+    before = time.time()
+    sidecall._no_reply("dsh", Out())
+    paused = json.loads(run("--json")).get("side", {}).get("paused")
+    assert isinstance(paused, dict) and paused["at"] >= before - 1
+    assert "authenticate" in paused["reason"]
+    assert sidecall.resume("dsh", run.ctx.root) is True
+    assert json.loads(run("--json")).get("side") == {"paused": None, "host": "dsh"}
+
+
+@pytest.mark.parametrize("text", ["not json", "[1, 2]", "{}", '{"at": 0, "reason": "x"}'])
+def test_a_damaged_pause_file_means_not_paused_not_a_crash(run, text):
+    pause_file(run.ctx, text)
+    assert json.loads(run("--json")).get("side") == {"paused": None, "host": "dsh"}
+
+
+def test_the_other_keys_are_unchanged_and_side_is_the_only_addition(run, capsys):
+    data = json.loads(run("--json", rows=[rec("a", 1000.0)]))
+    assert set(data) == {"schema", "status", "series", "side"}
+    assert data["schema"] == 1
+    assert cli.main(["--host", "dsh", "--cwd", str(run.repo), "status", "--json"]) == 0
+    assert data["status"] == json.loads(capsys.readouterr().out)
+    assert [s["id"] for s in data["series"]["sessions"]] == ["a"]
+
+
+def test_the_text_view_does_not_print_the_pause_reason(run):
+    secret = "token=sk-secret-123 Please run /login"
+    pause_file(run.ctx, json.dumps({"at": 1234.5, "reason": secret}))
+    assert (json.loads(run("--json")).get("side") or {}).get("paused", {}) == {"at": 1234.5, "reason": secret}
+    out = run(rows=[rec("a")])
+    assert "1 finished session(s)" in out
+    assert "sk-secret-123" not in out and secret not in out

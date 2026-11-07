@@ -35,6 +35,12 @@ function createViews(React) {
       h('div', { style: S.row }, h('span', { style: { fontWeight: 600 } }, m.title), h('span', { style: S.pill }, m.mode)),
       h('div', { style: { ...S.muted, fontSize: 12 } }, m.detail));
 
+  const CALLS_BADGE = { active: S.pill, paused: { ...S.pill, ...S.warn }, unknown: S.pill };
+  const ModelCalls = ({ c }) =>
+    h('div', { style: S.card, 'data-te': 'modelcalls' },
+      h('div', { style: S.row }, h('span', { style: { fontWeight: 600 } }, c.title), h('span', { style: CALLS_BADGE[c.state] ?? S.pill, 'data-te': 'modelcalls-state' }, c.state)),
+      h('div', { style: { ...S.muted, fontSize: 12 } }, c.detail));
+
   const { Columns, Line, Legend, Sized } = createCharts(React);
 
   const Titled = ({ name, title, caption, children }) => h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 }, 'data-te': `chart-${name}` },
@@ -98,7 +104,8 @@ function createViews(React) {
           h(Stat, { name: 'Effective tokens', value: m.ledger.effective, hint: `${m.ledger.requests} requests · ${m.ledger.turns} turns` }),
           h(Stat, { name: 'Plugin overhead', value: m.ledger.overhead, hint: `${m.ledger.overheadPct} of effective` })),
       historySessions.length > 0 ? h(History, { sessions: historySessions, range, onRange }) : null,
-      ...m.mechanisms.map((x) => h(Mechanism, { key: x.key, m: x })));
+      ...m.mechanisms.map((x) => h(Mechanism, { key: x.key, m: x })),
+      m.modelCalls ? h(ModelCalls, { c: m.modelCalls }) : null);
   }
 
   /** Reads `/te panel --json` when it opens, when its session changes and when asked; never polls (each run is a logged command). */

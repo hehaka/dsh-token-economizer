@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
-import { fakeReact, marked, textOf } from './fake-react.mjs';
+import { fakeReact, findAll, marked, textOf } from './fake-react.mjs';
 import { PANEL, STATUS } from './fixtures.mjs';
 
 const require = createRequire(import.meta.url);
@@ -74,4 +74,61 @@ test('a throwing fetch becomes an error state', async () => {
   const tree = fake.render(Panel);
   assert.deepEqual(tree.props.view, { state: 'error', message: 'socket closed' });
   assert.ok(toViewState);
+});
+
+const rowOf = (tree) => marked(tree).find((n) => n.props['data-te'] === 'modelcalls');
+const drawn = (side) => {
+  const { react } = fakeReact();
+  const { StatusView } = createViews(react);
+  const model = buildModel(side === undefined ? PANEL : { ...PANEL, side });
+  return StatusView({ view: { state: 'ready', model }, onRefresh() {} });
+};
+
+test('the Model calls row follows the mechanisms and shows title, state and detail when active', () => {
+  const tree = drawn({ paused: null, host: 'dsh' });
+  const all = tags(tree);
+  assert.ok(all.includes('modelcalls'), 'a row marked modelcalls');
+  assert.ok(all.indexOf('modelcalls') > all.indexOf('mechanism-loopguard'), 'after the mechanisms');
+  const text = textOf(rowOf(tree));
+  assert.match(text, /Model calls/);
+  assert.match(text, /active/i);
+  assert.match(text, /answered through DSH's model service/);
+  assert.doesNotMatch(text, /paused/i);
+});
+
+test('a paused Model calls row says so in words, with the reason and the way out', () => {
+  const tree = drawn({ paused: { at: 1762500000, reason: 'Please run /login' }, host: 'dsh' });
+  const text = textOf(rowOf(tree));
+  assert.match(text, /Model calls/);
+  assert.match(text, /paused/i);
+  assert.match(text, /Please run \/login/);
+  assert.match(text, /te config set microskills\|loopguard/);
+  assert.doesNotMatch(textOf(rowOf(drawn({ paused: null, host: 'dsh' }))), /paused/i);
+});
+
+test('the state is a badge text of its own, so colour is not the only signal', () => {
+  const badge = (tree) => {
+    const row = rowOf(tree);
+    assert.ok(row, 'a row marked modelcalls');
+    return findAll(row, (e) => typeof e.type === 'string' && /^(active|paused|unknown)$/i.test(textOf(e).trim()));
+  };
+  assert.equal(badge(drawn({ paused: null, host: 'dsh' })).length, 1, 'active has a badge');
+  assert.equal(badge(drawn({ paused: { at: 1, reason: 'r' }, host: 'dsh' })).length, 1, 'paused has a badge');
+  assert.equal(badge(drawn(undefined)).length, 1, 'unknown has a badge');
+});
+
+test('without side data the row says unknown and no data, and the panel still draws', () => {
+  const tree = drawn(undefined);
+  const text = textOf(rowOf(tree));
+  assert.match(text, /Model calls/);
+  assert.match(text, /unknown/i);
+  assert.match(text, /no data/);
+  assert.deepEqual(tags(tree).filter((t) => t.startsWith('mechanism-')), ['mechanism-microskills', 'mechanism-toolprune', 'mechanism-loopguard']);
+});
+
+test('the Model calls row is drawn for an empty ledger too', () => {
+  const { react } = fakeReact();
+  const { StatusView } = createViews(react);
+  const model = buildModel({ ...PANEL, status: { ...STATUS, ledger: { ...STATUS.ledger, sessions: 0 } }, side: { paused: null, host: 'dsh' } });
+  assert.ok(tags(StatusView({ view: { state: 'ready', model }, onRefresh() {} })).includes('modelcalls'));
 });

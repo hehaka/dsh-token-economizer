@@ -8,9 +8,15 @@
  "base": "9b892dd",
  "max_iterations": 18,
  "budget": 180,
- "calls": 12,
- "iteration": 5,
- "open": null,
+ "calls": 15,
+ "iteration": 6,
+ "open": {
+  "k": 6,
+  "item": "T7",
+  "fix_rounds": 0,
+  "start": "1ab4a67",
+  "notes": []
+ },
  "items": [
   {
    "id": "T1",
@@ -327,12 +333,19 @@
    "what": "T4 not reviewed by a second model",
    "why": "production code unchanged; only characterization tests and a live script, validated by mutation checks (isRoot guard, observeRoute(agent.options)) and live runs; the final T8 review covers the whole diff",
    "rejected": ""
+  },
+  {
+   "iteration": 6,
+   "what": "T7 review: both Minors deferred",
+   "why": "malformed pause files are hardening outside the item description (the core itself writes sidecall.json with {at, reason}); severity rule says Minor -> defer. The 'secret visible in the reason' note is raised again in the T8 review",
+   "rejected": ""
   }
  ],
  "deferred": [
   "T3: live-sidecall redactor also masks the key cache_creation_input_tokens in printed replies (cosmetic)",
   "multi-session in one DSH process: the route is process-global (last observed), the endpoint cannot tell which session a core call belongs to; a call could run on another session's model. Needs the session id on the request (core Runner change) - out of plan",
-  "proxy unwrap (tool_call) is unit-tested only: the headless profile exposes no tool_call tool, so the live prune loop could not exercise it"
+  "proxy unwrap (tool_call) is unit-tested only: the headless profile exposes no tool_call tool, so the live prune loop could not exercise it",
+  "T7: panel.py passes a damaged sidecall.json through unvalidated (types, length); model.cjs shows malformed side.paused as active; reason (provider error text, <=300 chars from the core) shown 120 chars in UI"
  ],
  "stop": "",
  "goal": {

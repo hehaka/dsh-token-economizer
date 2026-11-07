@@ -20,7 +20,7 @@ function fmtPct(f) {
 }
 
 /**
- * The text `te panel --json` answered with -> {ok, status, series}. A bare `te status --json` document
+ * The text `te panel --json` answered with -> {ok, status, series, side}. A bare `te status --json` document
  * is accepted too (no series), so a core older than the panel command still draws the overview.
  */
 function parsePanel(text) {
@@ -32,7 +32,7 @@ function parsePanel(text) {
   }
   const status = isObject(v) && isObject(v.status) ? v.status : v;
   if (!isObject(status) || !isObject(status.ledger) || !isObject(status.config)) return { ok: false, error: 'unexpected status shape' };
-  return { ok: true, status, series: isObject(v?.series) ? v.series : null };
+  return { ok: true, status, series: isObject(v?.series) ? v.series : null, side: isObject(v?.side) ? v.side : null };
 }
 
 const MODE_LABEL = { off: 'off', on: 'on', auto: 'automatic', propose: 'proposals only', nudge: 'nudges', shadow: 'shadow (observe only)' };
@@ -45,11 +45,38 @@ function toViewState(exec) {
   if (!result) return { state: 'error', message: 'The /te command is not available (is the plugin loaded?).' };
   if (result.kind !== 'success') return { state: 'error', message: String(result.text ?? 'te failed').slice(0, 400) };
   const parsed = parsePanel(result.text);
-  return parsed.ok ? { state: 'ready', model: buildModel(parsed.status), series: parsed.series } : { state: 'error', message: parsed.error };
+  return parsed.ok ? { state: 'ready', model: buildModel(parsed.status, parsed.side), series: parsed.series } : { state: 'error', message: parsed.error };
 }
 
-/** Status -> what the view draws. */
-function buildModel(s) {
+const MAX_REASON = 120;
+const MAX_NAMES = 3;
+
+/** What tool pruning did: applied (first few by name), proposed, and where the tool list came from. */
+function toolpruneDetail(tp, note) {
+  const applied = Array.isArray(tp.applied) ? tp.applied.map(String) : [];
+  const names = applied.slice(0, MAX_NAMES).join(', ');
+  const more = applied.length > MAX_NAMES ? ', …' : '';
+  const counts = `${applied.length} applied${names ? ` (${names}${more})` : ''} · ${(tp.proposal ?? []).length} proposed · catalog: ${tp.catalog_source || 'none yet'}`;
+  return typeof note === 'string' && note ? `${note} · ${counts}` : counts;
+}
+
+/** The core's `side` -> the Model calls row: the model calls the plugin makes itself, active or paused. */
+function modelCalls(side) {
+  const base = { key: 'modelcalls', title: 'Model calls' };
+  if (!isObject(side) || !('paused' in side)) return { ...base, state: 'unknown', detail: 'no data' };
+  if (!isObject(side.paused)) return { ...base, state: 'active', detail: "answered through DSH's model service" };
+  const reason = typeof side.paused.reason === 'string' ? side.paused.reason.slice(0, MAX_REASON) : '';
+  return { ...base, state: 'paused',
+    detail: `${reason ? `${reason} · ` : ''}paused until you set microskills or loopguard again (te config set microskills|loopguard <mode>)` };
+}
+
+/**
+ * What the view draws. Takes the panel payload ({status, series, side}) or a bare status; `side`
+ * may also be passed on its own (toViewState has already taken the payload apart).
+ */
+function buildModel(payload, sideArg) {
+  const s = isObject(payload?.status) && !isObject(payload.ledger) ? payload.status : payload;
+  const side = sideArg ?? (s === payload ? undefined : payload.side);
   const ledger = s.ledger ?? {};
   const mp = s.microskills ?? {};
   const tp = s.toolprune ?? {};
@@ -65,10 +92,11 @@ function buildModel(s) {
       { key: 'microskills', title: 'Learned facts', mode: label(cfg.microskills),
         detail: `${Number(mp.injected_lines) || 0} line(s) injected · ${Number(mp.sessions_folded) || 0} session(s) learned from` },
       { key: 'toolprune', title: 'Tool pruning', mode: label(cfg.toolprune),
-        detail: s.notes?.toolprune ?? `${(tp.proposal ?? []).length} proposed · ${(tp.applied ?? []).length} applied` },
+        detail: toolpruneDetail(tp, s.notes?.toolprune) },
       { key: 'loopguard', title: 'Loop guard', mode: label(cfg.loopguard),
         detail: `${Number(lg.ended_green_turns) || 0} turn(s) ended green · ${Number(ledger.nudges) || 0} nudge(s) · ${Number(ledger.aborts) || 0} abort(s)` },
     ],
+    modelCalls: modelCalls(side),
     ledger: {
       sessions,
       priced: Number(ledger.priced_sessions) || 0,

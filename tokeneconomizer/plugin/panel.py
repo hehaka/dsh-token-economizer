@@ -1,7 +1,7 @@
 """The data behind the visual panels: `te panel [--json]`.
 
-One JSON document holds what a panel draws -- `te status --json` unchanged, plus the series of
-finished sessions from the ledger -- so a panel runs one command per refresh. The series carries
+One JSON document holds what a panel draws -- `te status --json` unchanged, the series of
+finished sessions from the ledger, and `side` (whether the host's side calls are paused) -- so a panel runs one command per refresh. The series carries
 what was recorded, nothing estimated: each session's effective tokens split into the parts the
 price table weights (they add up to `effective` exactly), the plugin's own overhead, the cache hit
 rate, redirects, and whether facts were injected. It makes no claim about what any of it saved;
@@ -15,7 +15,7 @@ import json
 import time
 
 from .. import pricing
-from . import accounting
+from . import accounting, sidecall
 
 SCHEMA = 1
 MAX_SESSIONS = 120          # newest sessions in the payload; `earlier` counts the rest
@@ -95,7 +95,9 @@ def payload(args):
     from . import cli
     ctx = cli._ctx(args)
     return {"schema": SCHEMA, "status": _status(args),
-            "series": {**series(ctx.store.read_lines("ledger.jsonl")), "generated": time.time()}}
+            "series": {**series(ctx.store.read_lines("ledger.jsonl")), "generated": time.time()},
+            # the host's side calls (model calls the plugin makes itself): the pause, if its CLI said it is not signed in
+            "side": {"paused": sidecall.paused(ctx.host.name, ctx.root), "host": ctx.host.name}}
 
 
 def spark(values):

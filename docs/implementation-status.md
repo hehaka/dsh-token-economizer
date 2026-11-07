@@ -6,10 +6,10 @@
 - instruction: -
 - base commit: 9b892dd
 - DoD: docs/dod.md, frozen sha256 b763c64898e3d5cbaa2b97b53ff6daee318ab08bcb3f8dbd7590d1acd405b0d9
-- iteration: 5 / 18
-- subagent calls: 12 / 180
+- iteration: 6 / 18
+- subagent calls: 15 / 180
 - last commit: 22afdb9
-- open iteration: none
+- open iteration: 6, item T7, fix rounds 0, started at 1ab4a67
 - goal: goal-cd2e4c05-0c18-4e76-ab00-084d5e002fb9, active
 
 ## DoD
@@ -64,8 +64,10 @@ RESULT: FAIL (2 of 12 command criteria failed) (iteration 5, report docs/iterati
 - it3: T4 outcome of spike: keep agent.options as the route source, no agentDefaultModel fallback. Why: spike 3-spike.md: agent.options.provider/model is set at agent/created (live), before the first request/context; session/created (SessionStart) precedes agent/created by ~55 ms so a core call that races that window may get NO_ROUTE. agentDefaultModel is the profile default, not necessarily the session's model (resume/switch), so using it could bill an unexpected model. Rejected: agentDefaultModel fallback; delaying SessionStart until agent/created.
 - it3: T4 tests are characterization tests, production code expected unchanged. Why: observeRoute(agent.options) already exists and was verified by the spike; the red state is D3 (live route group missing). NO_ROUTE live outcome is a race with agent/created, so the live check accepts either clean NO_ROUTE (no pause, zero charge) or success on the session's route; the deterministic NO_ROUTE path is covered by an offline Node test.
 - it3: T4 not reviewed by a second model. Why: production code unchanged; only characterization tests and a live script, validated by mutation checks (isRoot guard, observeRoute(agent.options)) and live runs; the final T8 review covers the whole diff.
+- it6: T7 review: both Minors deferred. Why: malformed pause files are hardening outside the item description (the core itself writes sidecall.json with {at, reason}); severity rule says Minor -> defer. The 'secret visible in the reason' note is raised again in the T8 review.
 
 ## Deferred
 - T3: live-sidecall redactor also masks the key cache_creation_input_tokens in printed replies (cosmetic)
 - multi-session in one DSH process: the route is process-global (last observed), the endpoint cannot tell which session a core call belongs to; a call could run on another session's model. Needs the session id on the request (core Runner change) - out of plan
 - proxy unwrap (tool_call) is unit-tested only: the headless profile exposes no tool_call tool, so the live prune loop could not exercise it
+- T7: panel.py passes a damaged sidecall.json through unvalidated (types, length); model.cjs shows malformed side.paused as active; reason (provider error text, <=300 chars from the core) shown 120 chars in UI
