@@ -8,16 +8,14 @@
  "base": "0bce3df",
  "max_iterations": 14,
  "budget": 140,
- "calls": 4,
- "iteration": 4,
+ "calls": 5,
+ "iteration": 5,
  "open": {
-  "k": 4,
-  "item": "T4",
+  "k": 5,
+  "item": "T6",
   "fix_rounds": 0,
-  "start": "ed1d4f9",
-  "notes": [
-   "T4: PTC defect confirmed live (core denied a tool used through run_code), fixed in spool.mjs; live-ptc 19/19 re-run, npm test 161/0"
-  ]
+  "start": "9262f92",
+  "notes": []
  },
  "items": [
   {
@@ -92,9 +90,9 @@
    "deps": [
     "T1"
    ],
-   "status": "open",
-   "iteration": null,
-   "commit": null,
+   "status": "done",
+   "iteration": 4,
+   "commit": "9262f92",
    "hypotheses": [],
    "block": null
   },
@@ -168,7 +166,8 @@
  "log": [
   "it1 T1: done, commit 4217a8c, fix rounds 0",
   "it2 T2: done, commit 7df5354, fix rounds 0; T2: live-multisession models 24/24 (orchestrator re-run), resume 9/9, npm test 153/0",
-  "it3 T3: done, commit ed1d4f9, fix rounds 0; T3: live-proxy 26/26 re-run by orchestrator, no production defect"
+  "it3 T3: done, commit ed1d4f9, fix rounds 0; T3: live-proxy 26/26 re-run by orchestrator, no production defect",
+  "it4 T4: done, commit 9262f92, fix rounds 0; T4: PTC defect confirmed live (core denied a tool used through run_code), fixed in spool.mjs; live-ptc 19/19 re-run, npm test 161/0"
  ],
  "decisions": [
   {
@@ -199,7 +198,8 @@
  "deferred": [
   "known limit: in dsh web, after session/selectModel and before the session's first request the endpoint answers a call for that session on the profile default model (agent.options), not on the selected model; never another session's route (live-multisession (f)). Fix needs a DSH event carrying the selection; not found in the spike",
   "tool_call to an unknown tool: dsh-tool-search answers {ok:false} with isError false, so the spool records a phantom successful call under that name (harmless: not in the catalog, never in deny)",
-  "PTC: nested results are recorded, content capped by RESULT_CAP; a dispatch without subCallId gets a synthesized id (review in T6)"
+  "PTC: nested results are recorded, content capped by RESULT_CAP; a dispatch without subCallId gets a synthesized id (review in T6)",
+  "PTC spool: resume does not rebuild dedup state; RESULT_CAP per result not per session; (subagent PTC rejected by design)"
  ],
  "stop": "",
  "goal": {
@@ -208,7 +208,7 @@
   "phase": "active",
   "audit": null
  },
- "last_commit": "ed1d4f9",
- "last_item": "T3",
+ "last_commit": "9262f92",
+ "last_item": "T4",
  "needs_dod": true
 }
