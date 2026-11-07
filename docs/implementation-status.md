@@ -6,10 +6,10 @@
 - instruction: repo CLAUDE.md
 - base commit: 0bce3df
 - DoD: docs/dod.md, frozen sha256 29ef905b325fe55bb641acaec6703f78a0e97bc23751ee39e75130de9a1d5f2c
-- iteration: 5 / 14
-- subagent calls: 5 / 140
-- last commit: 9262f92
-- open iteration: 5, item T6, fix rounds 0, started at 9262f92
+- iteration: 6 / 14
+- subagent calls: 6 / 140
+- last commit: e1f66b7
+- open iteration: 6, item T7, fix rounds 0, started at e1f66b7
 - goal: goal-4ef63029-44d6-4e4b-8a8c-9990ca83f071, active
 
 ## DoD
@@ -24,7 +24,7 @@
 | T3 | behaviour | must | D3,D6,D7 | T1 | done | 3 | ed1d4f9 | plan T3: live-proxy.mjs |
 | T4 | behaviour | must | D4,D6,D7,D8 | T1 | done | 4 | 9262f92 | plan T4: live-ptc.mjs and fix if needed |
 | T5 | behaviour | must | D5,D6,D7 | T1 | blocked | - | - | plan T5: live-tui.mjs |
-| T6 | other | must | D9,D10 | T2,T3,T4,T5 | open | - | - | plan T6: review of production fixes of this run |
+| T6 | other | must | D9,D10 | T2,T3,T4,T5 | done | 5 | e1f66b7 | plan T6: review of production fixes of this run |
 | T7 | other | must | D6,D7,D8,D9,D11 | T6 | open | - | - | plan T7: docs, full tests, budget, push |
 
 ## Blocked
@@ -35,6 +35,7 @@
 - it2 T2: done, commit 7df5354, fix rounds 0; T2: live-multisession models 24/24 (orchestrator re-run), resume 9/9, npm test 153/0
 - it3 T3: done, commit ed1d4f9, fix rounds 0; T3: live-proxy 26/26 re-run by orchestrator, no production defect
 - it4 T4: done, commit 9262f92, fix rounds 0; T4: PTC defect confirmed live (core denied a tool used through run_code), fixed in spool.mjs; live-ptc 19/19 re-run, npm test 161/0
+- it5 T6: done, commit e1f66b7, fix rounds 0
 
 ## Last 10 decisions (all: docs/iterations/decisions.md)
 - it1: T1 outcome: T2, T3, T4 go ahead with the spike's recipes; T5 (TUI) is blocked. Why: docs/iterations/1-spike.md: Q1 two sessions on different models in one dsh web is possible (UI pick + HTTP RPC session/create, session/selectModel, session/prompt); Q2 resume = --session-id with an agent-default-model overlay; Q3 dsh-tool-search overlay gives tool_search/tool_call; Q4 PTC = tools entry config mode ptc, nested bash is NOT in the spool (only run_code), Q5 this dsh install has no TUI profile (dsh tui: profile tui does not exist), so D5 cannot be met here and the DoD is frozen.

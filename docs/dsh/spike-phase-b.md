@@ -108,22 +108,32 @@ Plan: [`docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md`](../plans/2
 - `browser-check.mjs --prune [--only prune|panel]` — 24/24, prawdziwy model w prawdziwym Chrome przeciw `dsh web`: lista odmów zastosowana, jeden plik punktu końcowego, wywołanie przez niego odpowiedziane na modelu sesji, wiersze panelu „Model calls: active” i szczegół przycinania zgodne z `te status --json`. `te panel --json` ma pole `side` = `{paused, host}`; klient pokazuje wiersz „Model calls” (active/paused/unknown, stan jako tekst) i linię szczegółu przycinania (zastosowane, zaproponowane, źródło katalogu).
 - Trasa przed pierwszym zapytaniem: wywołanie rdzenia przy `SessionStart` powiodło się na trasie sesji w każdym przebiegu na żywo (hook jest osobnym procesem, a `agent/created` ustawił trasę wcześniej). `agent.options.provider/model` są ustawione przy `agent/created` ([spike](../iterations/3-spike.md)); `session/created` przychodzi ~55 ms wcześniej.
 
+**Drugi przebieg (2026-11-07):** plan [`docs/plans/2026-11-07-dsh-brakujace-kontrole-na-zywo.md`](../plans/2026-11-07-dsh-brakujace-kontrole-na-zywo.md), raporty `docs/iterations/{1-spike,2-implement,3-implement,4-tests,4-implement,5-review}.md`, przegląd [`docs/reviews/2026-11-07-dsh-live-gaps.md`](../reviews/2026-11-07-dsh-live-gaps.md). Nowe skrypty w `plugin/dsh/test/live/`:
+- `live-multisession.mjs --only models` — 24/24: dwie sesje na różnych modelach (`anthropic/claude-haiku-5-5`, `anthropic/claude-sonnet-5-5`) w **jednym** procesie `dsh web`, sterowane przez jego HTTP RPC (`session/create`, `session/selectModel`, `session/prompt`). Punkt końcowy odpowiadał per id sesji na trasie tej sesji, pierwsza znów po drugiej nadal na swoim modelu; nieznane id sesji → `409 NO_ROUTE`; brak sesji → ostatnio zaobserwowana trasa.
+- `live-multisession.mjs --only resume` — 9/9: `dsh headless --session-id <id>` z nakładką agent-default-model: wznowiona sesja szła na modelu nakładki, a odpowiedź punktu końcowego, `agent.options` i `request/context` wskazywały ten sam model.
+- `live-proxy.mjs` — 26/26: nakładka `dsh-tool-search` w headless; model widzi `tool_search`/`tool_call` i żadnych bezpośrednich narzędzi `mcp__*`, woła narzędzie MCP przez `tool_call`; spool zapisuje prawdziwą nazwę narzędzia; lista odmów zapisana przez prawdziwy rdzeń nie zawiera narzędzia przez proxy, `tool_call`, `tool_search`, `tool_describe` ani `bash`; te trzy narzędzia są w katalogu; nieznana nazwa przez `tool_call` → `{ok:false}` z `isError` false, więc spool zapisuje nieszkodliwe wywołanie-widmo.
+- `live-ptc.mjs` — 19/19 po poprawce: PTC = `mode: ptc` we wpisie `dsh-tools`; model widzi tylko `run_code`; spool zapisuje zagnieżdżone wywołania (przed poprawką 10/18).
+
 **Błędy znalezione na żywo, naprawione:**
 1. Na `dsh web` lista odmów nigdy nie była stosowana: `tools.schemas()` bez zakresu zwracało tylko `working_directory` (narzędzia modelu są w płaszczyźnie agenta), więc katalog był równie mały → teraz `schemas(agent)`.
 2. Trzy kolejne prawdziwe wywołania modelu w jednym hooku przekraczają 20 s limit mostu → atrapa rdzenia wykonuje jeden wariant na hook.
+3. (drugi przebieg) Sesje PTC: spool zawierał tylko `run_code`, więc rdzeń zapisał listę odmów z narzędziem użytym z kodu i następna sesja nie mogła go wywołać → `spool.mjs` zapisuje zdarzenia `tool/ptc-dispatch` jako wiersze `toolCall` + `toolResult` (8 testów w `spool-ptc.test.mjs`, 7 czerwonych przed poprawką, sprawdzone mutacją).
 Poprawki z przeglądu: trasa per sesja (`TE_DSH_SESSION`), plik punktu końcowego nigdy nie podąża za dowiązaniem, limit ciała w bajtach, termin wolnego ciała, oczyszczanie błędów dostawcy, pauza tylko dla błędów uwierzytelnienia dostawcy, zapasowe `restrict` per nazwa, plik odmów czytany z korzenia repo (najbliższe `.git`), katalog per repo (`hosts/dsh/catalogs/`), walidacja kształtu pliku ustawień, stany panelu.
 
-**Liczby:** różnica względem plików upstreamu 46 z 60 linii (`scripts/dsh_diff_budget.py`, mierzy stan zatwierdzony). Testy: `npm test` 152, pytest 1287 wyników (z testami dsh); `docs/dod.md` D1–D13 PASS (D11 opisowe = ten dokument).
+**Liczby:** różnica względem plików upstreamu 46 z 60. Testy po drugim przebiegu: `npm test` 161, pytest 591 (`def test_`; wcześniejsze 1287 to wyniki z parametryzacją, inna miara). `docs/dod.md` D1–D13 PASS dotyczyło pierwszego przebiegu (D11 opisowe = ten dokument).
 
-**Nie sprawdzone / limity:**
-- dwie sesje na **różnych** modelach w jednym procesie: testy wtyczki z atrapą `ctx.llm`, nie na żywo;
-- proxy `tool_call` (`unproxy`): tylko testy jednostkowe, bo profil headless nie ma narzędzia `tool_call`;
-- sesje PTC (`run_code`) mogą ukrywać użycie narzędzi MCP przed spoolem (niezweryfikowane);
-- aplikacja desktopowa, Firefox/Safari, interaktywne TUI;
-- sesja wznowiona lub ze zmienionym modelem: trasa pochodzi z `agent/created` i `request/context`, bieżący model sesji może różnić się od domyślnego modelu profilu;
+**Limity obserwowane na żywo:**
+- `dsh web`: po `session/selectModel` a przed pierwszym zapytaniem sesji wywołanie punktu końcowego wskazujące sesję idzie na modelu domyślnym profilu (`agent.options`), nie na wybranym; nigdy na trasie innej sesji; po pierwszym zapytaniu trasą jest wybrany model;
+- POST wykonany w oczekiwanym nasłuchu `agent/created` innego pluginu dostał `409 NO_ROUTE` (przyczyna nie wyizolowana; ścieżka hooka, osobny proces, nie jest dotknięta);
+- użycie narzędzi przez subagenta (także PTC) nie jest w spoolu głównym (zamierzone, ADR 0004; odrzucone w przeglądzie);
+- ta instalacja DSH nie ma TUI (`dsh tui`: profil „tui” nie istnieje; profile: acp, web, headless, sdk, sdk-minimal), więc interaktywne TUI **nie** było sprawdzone (T5 zablokowane; użytkownik decyduje, czy kryterium odpada, czy instalować pakiet TUI ze społeczności). Interaktywny web pokryty przez `dsh web`.
+
+**Nie sprawdzone:**
+- brak trasy (`409 NO_ROUTE`) jako wynik na żywo (wyścig): przypięte testami (Node, Python, atrapa); na żywo obserwowany tylko dla nieznanego id sesji i w nasłuchu innego pluginu;
+- aplikacja desktopowa, Firefox/Safari;
 - rozliczenie tokenów rozumowania (czy `outputTokens` je zawiera — nieustalone);
-- `dsh web` sterowany headless Chrome, jeden prompt na przebieg, nie długimi sesjami;
-- brak trasy (`409 NO_ROUTE`, rdzeń traktuje to jako brak odpowiedzi: bez pauzy, nic nie księgowane): przypięte testami (Node, Python, atrapa), na żywo **nieobserwowane** — to wyścig;
-- skuteczność przycinania nie jest mierzona: obserwacje to liczby narzędzi w zapytaniu, trasy i wiersze księgi.
+- długie sesje interaktywne;
+- skuteczność przycinania nie jest mierzona: obserwacje to liczby narzędzi w zapytaniu, trasy i wiersze księgi;
+- wznowienie nie odbudowuje stanu deduplikacji PTC; `RESULT_CAP` jest per wynik, nie per sesja (uwagi z przeglądu, bez poprawki).
 
 **Odroczone z przeglądu:** uszkodzony `sidecall.json` trafia do panelu bez walidacji; Python `_usage` przyjmuje NaN i wartości ujemne (JS czyści je przed księgą); mechanizm `llm_nudge_writer` z upstreamu księguje 0 dla pustej odpowiedzi; `te toolprune apply NAZWA` na dsh nie odmawia nazw chronionych (upstreamowy `cli.py`).
