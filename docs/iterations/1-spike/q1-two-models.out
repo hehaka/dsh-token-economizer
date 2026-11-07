@@ -1,0 +1,31 @@
+UI: clicked Model row: true
+UI: clicked GPT-6 Luna: true
+UI: picker label now: Select model, current GPT-6 Luna
+session A (spool file name = session id): session-1c34dbe0-393c-4c83-a145-a2102d2a134d
+UI rpc: POST api/workspace/initializeDefault {"type":"client-request","rpcId":"788d38c0-c55e-4dad-9edf-e3d4bb055e0d","method":"workspace/initializeDefault","payload":{"args":{}}}
+UI rpc: POST api/session/create {"type":"client-request","rpcId":"76802190-0d5b-4dec-880c-2ef47c23e576","method":"session/create","payload":{"args":{"request":{"workspaceId":"37f59a10-aecc-471e-b93a-20a5a97aae0c"}}}}
+UI rpc: POST api/session/selectModel {"type":"client-request","rpcId":"4058ec24-0af3-4d6d-a930-dcdab2ab7570","method":"session/selectModel","payload":{"args":{"request":{"sessionId":"session-1c34dbe0-393c-4c83-a145-a2102d2a134d","provider":"azure-openai-responses","model":"gpt-6-luna"}}}}
+UI rpc: POST api/session/prompt {"type":"client-request","rpcId":"d13a1d6d-2168-4d98-af71-540e0a00f43b","method":"session/prompt","payload":{"args":{"request":{"requestId":"f018fb1e-2906-4401-959d-9647d0e2d69b","sessionId":"session-1c34dbe0-393c-4c83-a145-a2102d2a134d","mode":"queue","content":[{"type":"text","text":"<prompt>"}],"clientTimeZone":"Europe/Warsaw"}}}}
+A turn ended: true
+launch-token exchange: HTTP 303, cookie set: true
+workspaceId from UI create call: 37f59a10-aecc-471e-b93a-20a5a97aae0c
+API session/create: {"status":200,"body":{"type":"server-response","rpcId":"63158468-1ea2-40b1-b865-ebec5f9e3cd3","result":{"ok":true,"value":{"sessionId":"session-494a7894-f20b-46ee-92bd-77f1148cd19d","agentPreset":"standard"}}}}
+session B id: session-494a7894-f20b-46ee-92bd-77f1148cd19d
+API session/selectModel: {"status":200,"body":{"type":"server-response","rpcId":"91f4ab74-e83f-469c-b9fa-fc2472a1dce1","result":{"ok":true,"value":{"selected":{"provider":"anthropic","model":"claude-sonnet-5-5"}}}}}
+POST B after selectModel, BEFORE its first request (spool id of B does not exist yet): {"status":200,"provider":"anthropic","model":"claude-haiku-5-5","text":"pong"}
+API session/prompt: {"status":200,"body":{"type":"server-response","rpcId":"33ca5292-e176-4a38-85e4-8e187966069a","result":{"ok":true,"value":{"accepted":true}}}}
+B turn ended: true
+log A request/context: azure-openai-responses/gpt-6-luna
+log A model/selection events: ["azure-openai-responses/gpt-6-luna"]
+log A answer: ["ok"]
+log B request/context: anthropic/claude-sonnet-5-5
+log B model/selection events: ["anthropic/claude-sonnet-5-5"]
+log B answer: ["ok"]
+spool ids: ["session-1c34dbe0-393c-4c83-a145-a2102d2a134d","session-494a7894-f20b-46ee-92bd-77f1148cd19d"]
+endpoint files: ["sidecall.93763.endpoint.json"]
+endpoint file keys: ["pid","port","started","token"]
+POST session A: {"status":200,"provider":"azure-openai-responses","model":"gpt-6-luna","text":"pong"}
+POST session B: {"status":200,"provider":"anthropic","model":"claude-sonnet-5-5","text":"pong"}
+POST unknown session: {"status":409,"text":"","error":"NO_ROUTE"}
+POST no session (last observed route): {"status":200,"provider":"anthropic","model":"claude-sonnet-5-5","text":"pong"}
+endpoint files after SIGTERM: []

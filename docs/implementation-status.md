@@ -6,10 +6,10 @@
 - instruction: repo CLAUDE.md
 - base commit: 0bce3df
 - DoD: docs/dod.md, frozen sha256 29ef905b325fe55bb641acaec6703f78a0e97bc23751ee39e75130de9a1d5f2c
-- iteration: 0 / 14
-- subagent calls: 0 / 140
+- iteration: 1 / 14
+- subagent calls: 1 / 140
 - last commit: -
-- open iteration: none
+- open iteration: 1, item T1, fix rounds 0, started at a63b6e2
 - goal: goal-4ef63029-44d6-4e4b-8a8c-9990ca83f071, active
 
 ## DoD
@@ -34,7 +34,9 @@
 (none)
 
 ## Last 10 decisions (all: docs/iterations/decisions.md)
-(none)
+- it1: T1 outcome: T2, T3, T4 go ahead with the spike's recipes; T5 (TUI) is blocked. Why: docs/iterations/1-spike.md: Q1 two sessions on different models in one dsh web is possible (UI pick + HTTP RPC session/create, session/selectModel, session/prompt); Q2 resume = --session-id with an agent-default-model overlay; Q3 dsh-tool-search overlay gives tool_search/tool_call; Q4 PTC = tools entry config mode ptc, nested bash is NOT in the spool (only run_code), Q5 this dsh install has no TUI profile (dsh tui: profile tui does not exist), so D5 cannot be met here and the DoD is frozen.
+- it1: Watch item for T2: before a web session's first request the route is agent.options (profile default), not the model chosen by session/selectModel. Why: spike Q1: endpoint reply for B said haiku after selectModel(sonnet) until the first request. T2 measures it, and fixes it only if DSH emits an event carrying the selection; otherwise it is documented as a limit (the call runs on the default model, never on another session's).
+- it1: T4 fix direction for PTC: the spool must not make a tool used from run_code look unused. Why: spike Q4: spool has only the run_code block, but PostToolUse reached the plugin for the nested bash first; the core would see an MCP tool used only through the SDK as never used and propose denying it.
 
 ## Deferred
 (none)

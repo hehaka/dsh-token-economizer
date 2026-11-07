@@ -1,0 +1,46 @@
+--dump-config with the luna overlay: exit 0; agent-default-model model = gpt-6-luna
+run 1 (new session, profile default): exit 0; answer "ok"
+session id: session-fdc011fc-0a00-44a2-817f-736aeac9a28f
+run 2 (resume session-fdc011fc-0a00-44a2-817f-736aeac9a28f with luna overlay): exit 0; answer "ok"
+run 3 (resume again, profile default): exit 0; answer "ok"
+run 4 (new session, overlay lists the probe plugin BEFORE the TokenEconomizer plugin): exit 0
+run 5 (new session, probe POSTs 150 ms after agent/created without holding the handler): exit 0
+--- probe log
+{"t":65845,"tag":"run1-new","kind":"agent/created","session":"session-fdc011fc-0a00-44a2-817f-736aeac9a28f","options":{"provider":"anthropic","model":"claude-haiku-5-5"}}
+{"t":65948,"tag":"run1-new","kind":"probe-sent","when":"agent/created (before the first request)"}
+{"t":65952,"tag":"run1-new","kind":"probe","when":"agent/created (before the first request)","status":409,"text":"","error":"NO_ROUTE"}
+{"t":66311,"tag":"run1-new","kind":"request/context","session":"session-fdc011fc-0a00-44a2-817f-736aeac9a28f","provider":"anthropic","model":"claude-haiku-5-5"}
+{"t":67339,"tag":"run1-new","kind":"probe-sent","when":"turn end (after the first request)"}
+{"t":68043,"tag":"run1-new","kind":"probe","when":"turn end (after the first request)","status":200,"provider":"anthropic","model":"claude-haiku-5-5","text":"pong"}
+{"t":75965,"tag":"run2-resume-luna","kind":"agent/created","session":"session-fdc011fc-0a00-44a2-817f-736aeac9a28f","options":{"provider":"azure-openai-responses","model":"gpt-6-luna"}}
+{"t":76067,"tag":"run2-resume-luna","kind":"probe-sent","when":"agent/created (before the first request)"}
+{"t":76072,"tag":"run2-resume-luna","kind":"probe","when":"agent/created (before the first request)","status":409,"text":"","error":"NO_ROUTE"}
+{"t":76235,"tag":"run2-resume-luna","kind":"request/context","session":"session-fdc011fc-0a00-44a2-817f-736aeac9a28f","provider":"azure-openai-responses","model":"gpt-6-luna"}
+{"t":80283,"tag":"run2-resume-luna","kind":"probe-sent","when":"turn end (after the first request)"}
+{"t":80899,"tag":"run2-resume-luna","kind":"probe","when":"turn end (after the first request)","status":200,"provider":"azure-openai-responses","model":"gpt-6-luna","text":"pong"}
+{"t":88738,"tag":"run3-resume-default","kind":"agent/created","session":"session-fdc011fc-0a00-44a2-817f-736aeac9a28f","options":{"provider":"anthropic","model":"claude-haiku-5-5"}}
+{"t":88840,"tag":"run3-resume-default","kind":"probe-sent","when":"agent/created (before the first request)"}
+{"t":88845,"tag":"run3-resume-default","kind":"probe","when":"agent/created (before the first request)","status":409,"text":"","error":"NO_ROUTE"}
+{"t":89015,"tag":"run3-resume-default","kind":"request/context","session":"session-fdc011fc-0a00-44a2-817f-736aeac9a28f","provider":"anthropic","model":"claude-haiku-5-5"}
+{"t":90185,"tag":"run3-resume-default","kind":"probe-sent","when":"turn end (after the first request)"}
+{"t":90826,"tag":"run3-resume-default","kind":"probe","when":"turn end (after the first request)","status":200,"provider":"anthropic","model":"claude-haiku-5-5","text":"pong"}
+{"t":98678,"tag":"run4-new-probe-plugin-listed-first","kind":"agent/created","session":"session-007b7a4e-a18e-4c62-a003-8aab688e2607","options":{"provider":"anthropic","model":"claude-haiku-5-5"}}
+{"t":98781,"tag":"run4-new-probe-plugin-listed-first","kind":"probe-sent","when":"agent/created (before the first request)"}
+{"t":98785,"tag":"run4-new-probe-plugin-listed-first","kind":"probe","when":"agent/created (before the first request)","status":409,"text":"","error":"NO_ROUTE"}
+{"t":98947,"tag":"run4-new-probe-plugin-listed-first","kind":"request/context","session":"session-007b7a4e-a18e-4c62-a003-8aab688e2607","provider":"anthropic","model":"claude-haiku-5-5"}
+{"t":99982,"tag":"run4-new-probe-plugin-listed-first","kind":"probe-sent","when":"turn end (after the first request)"}
+{"t":665,"tag":"run4-new-probe-plugin-listed-first","kind":"probe","when":"turn end (after the first request)","status":200,"provider":"anthropic","model":"claude-haiku-5-5","text":"pong"}
+{"t":8657,"tag":"run5-new-deferred-probe","kind":"agent/created","session":"session-1ade355e-35e4-4d4f-9ecf-0a7ee9b7afef","options":{"provider":"anthropic","model":"claude-haiku-5-5"}}
+{"t":8809,"tag":"run5-new-deferred-probe","kind":"probe-sent","when":"agent/created + 150 ms, handler not awaited (before the first request)"}
+{"t":8984,"tag":"run5-new-deferred-probe","kind":"request/context","session":"session-1ade355e-35e4-4d4f-9ecf-0a7ee9b7afef","provider":"anthropic","model":"claude-haiku-5-5"}
+{"t":9614,"tag":"run5-new-deferred-probe","kind":"probe","when":"agent/created + 150 ms, handler not awaited (before the first request)","status":200,"provider":"anthropic","model":"claude-haiku-5-5","text":"pong"}
+{"t":10029,"tag":"run5-new-deferred-probe","kind":"probe-sent","when":"turn end (after the first request)"}
+{"t":10694,"tag":"run5-new-deferred-probe","kind":"probe","when":"turn end (after the first request)","status":200,"provider":"anthropic","model":"claude-haiku-5-5","text":"pong"}
+--- session log (DSH) of session-fdc011fc-0a00-44a2-817f-736aeac9a28f
+request/context routes in order: ["anthropic/claude-haiku-5-5","azure-openai-responses/gpt-6-luna","anthropic/claude-haiku-5-5"]
+request/header config routes in order: ["anthropic/claude-haiku-5-5","azure-openai-responses/gpt-6-luna","anthropic/claude-haiku-5-5"]
+model/selection events: []
+agent/created events in the log: 0
+turn/start count: 3 session event types: ["session","permission/preset","sandbox/mode","approval/policy","agent/inbox/spliced","turn/start","step/start","system/message","user/message","request/header","request/context","session/title","session/title-llm-request","assistant/message","step/end","turn/end","session/end-seed"]
+spool assistant models: ["claude-haiku-5-5","gpt-6-luna","claude-haiku-5-5"]
+work dir: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-spike1-q2

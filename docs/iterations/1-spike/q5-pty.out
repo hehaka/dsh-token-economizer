@@ -1,0 +1,10 @@
+argv: ['dsh', 'tui'] TERM=xterm-256color 120x40
+child output (escapes stripped, first 6 lines):
+  | file:///Users/boguslawlos/.hermes/node/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1069
+  | 		if (template === void 0) throw new Error(`${binName}: profile ${JSON.stringify(name)} does not exist; create it with 'dsh plugin --profile ${name} add <package>'`);
+  | 		                               ^
+  | Error: dsh: profile "tui" does not exist; create it with 'dsh plugin --profile tui add <package>'
+  |     at loadProfile (file:///Users/boguslawlos/.hermes/node/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1069:34)
+  |     at prepareProfile (file:///Users/boguslawlos/.hermes/node/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-C14i-8IN.js:218:18)
+exit: 1 after 0.1s
+home left behind: none

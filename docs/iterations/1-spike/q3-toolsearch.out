@@ -1,0 +1,16 @@
+exit 0; answer "done"
+session id: session-3c438b89-9052-4035-a3df-a94a5bd115a7
+request/header count: 2
+request/header #1 tools (7): todo_write,tool_search,tool_describe,tool_call,tool_slimmer_catalog,tool_slimmer_update_config,skill
+   mcp__* visible directly: 0; bridge present: tool_search,tool_describe,tool_call
+request/header #2 tools (8): todo_write,tool_search,tool_describe,tool_call,tool_slimmer_catalog,tool_slimmer_update_config,skill,mcp__postgres__postgres_mcp_list_connection_profiles
+   mcp__* visible directly: 1; bridge present: tool_search,tool_describe,tool_call
+log tool/call: {"turn":1,"step":1,"callId":"toolu_01VewBspPEh5QuDqVqiYeA67","name":"tool_call","arguments":"{\"name\":\"mcp__postgres__postgres_mcp_list_connection_profiles\",\"arguments\":{}}"}
+log tool/result: {"turn":1,"step":1,"message":{"role":"tool","source":{"kind":"tool","callId":"toolu_01VewBspPEh5QuDqVqiYeA67"},"toolCallId":"toolu_01VewBspPEh5QuDqVqiYeA67","content":[{"type":"text","text":"{\"ok\":true,\"value\":{\"con
+log event types: ["assistant/message","tool/call","tool/result"]
+assistant tool-call block: {"name":"tool_call","arguments":"{\"name\":\"mcp__postgres__postgres_mcp_list_connection_profiles\",\"arguments\":{}}"}
+spool toolCall blocks: [{"name":"mcp__postgres__postgres_mcp_list_connection_profiles","arguments":"{}"}]
+hook PostToolUse (what the plugin saw at tools/post-execute): [{"tool_name":"mcp__postgres__postgres_mcp_list_connection_profiles","input":"{}","isError":false},{"tool_name":"tool_call","input":"{\"name\":\"mcp__postgres__postgres_mcp_list_connection_profile","isError":false}]
+hosts/dsh/catalog.json: 188 tools; tool_call: true; tool_search: true; tool_describe: true; mcp__*: 154; has the postgres list tool: true
+catalogs/b3ebbe981d978074.json: 188 tools; tool_call: true; tool_search: true; tool_describe: true
+work dir: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-spike1-q3

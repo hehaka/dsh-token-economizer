@@ -1,0 +1,13 @@
+exit 0; answer "esult came back fine: exit code 0 and stdout `ptc-ok`.\n\ndone"
+session id: session-01d2efd9-8274-4e24-a484-f23c679447ed
+request/header #1 tools (1): run_code
+log event types: ["session","permission/preset","sandbox/mode","approval/policy","agent/inbox/spliced","turn/start","step/start","system/message","user/message","request/header","request/context","session/title","session/title-llm-request","assistant/message","tool/call","tool/ptc-dispatch-start","job/registered","job/settled","tool/ptc-dispatch","tool/result","step/end","turn/end"]
+log tool/call: {"turn":1,"step":1,"callId":"toolu_01CbgW8Jdb4mo5qRqouZU6nw","name":"run_code","arguments":"{\"code\":\"return await tools.bash({ description: \\\"Echo ptc-ok\\\", command: \\\"echo ptc-ok\\\" })\",\"description\":\"Run echo ptc-ok via bash\"}"}
+log tool/ptc-dispatch-start: {"rootCallId":"toolu_01CbgW8Jdb4mo5qRqouZU6nw","parentCallId":"toolu_01CbgW8Jdb4mo5qRqouZU6nw","subCallId":"toolu_01CbgW8Jdb4mo5qRqouZU6nw:ptc:1","name":"bash","arguments":{"description":"Echo ptc-ok","command":"echo ptc-ok"}}
+log tool/ptc-dispatch: {"rootCallId":"toolu_01CbgW8Jdb4mo5qRqouZU6nw","parentCallId":"toolu_01CbgW8Jdb4mo5qRqouZU6nw","subCallId":"toolu_01CbgW8Jdb4mo5qRqouZU6nw:ptc:1","name":"bash","arguments":{"description":"Echo ptc-ok","command":"echo ptc-ok"},"isError":false,"content":[{"type":"text","text":"ptc-ok\n"}],"meta":{"cwd":"/private/var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-spike1-q4/repo"}}
+log tool/result: {"turn":1,"step":1,"message":{"role":"tool","source":{"kind":"tool","callId":"toolu_01CbgW8Jdb4mo5qRqouZU6nw"},"toolCallId":"toolu_01CbgW8Jdb4mo5qRqouZU6nw","content":[{"type":"text","text":"{\n  \"kind\": \"foreground\",\n  \"cwd\": \"/private/var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-spike1-q4/repo\",\n  \"exitCode\": 0,\n  \"signal\": null,\n  \"timedOut\": false,\n  \"aborted\": false,\n  \"timeoutMs\": 
+spool toolCall blocks: [{"name":"run_code","arguments":"{\"code\":\"return await tools.bash({ description: \\\"Echo ptc-ok\\\", command: \\\"echo ptc-ok\\\" })\",\"description\":\"Run echo ptc-ok via bash\"}"}]
+spool toolResult rows: 1
+hook PostToolUse (what the plugin saw at tools/post-execute): [{"tool_name":"bash","input":"{\"description\":\"Echo ptc-ok\",\"command\":\"echo ptc-ok\"}","isError":false},{"tool_name":"run_code","input":"{\"code\":\"return await tools.bash({ description: \\\"Echo ptc-ok\\\", command: \\\"echo ptc-ok\\\" })\",\"descr","isError":false}]
+hosts/dsh/catalog.json: 184 tools; run_code: true; bash: true; mcp__*: 154
+work dir: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-spike1-q4

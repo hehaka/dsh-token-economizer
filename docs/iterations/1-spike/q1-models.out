@@ -1,0 +1,11 @@
+session/create ok: true session-8c22f18e-5cc8-4dc3-9f04-29d675d37ad2
+session/modelCatalog providers: ["azure-openai-responses:gpt-6-luna|gpt-6-sol|DeepSeek-V4-Pro|DeepSeek-V4.1-Flash|grok-4.7","anthropic:claude-opus-5-5|claude-sonnet-5-5|claude-haiku-5-5"] keys [ 'default', 'routableProviders', 'groups', 'failures' ]
+azure-openai-responses/gpt-6-luna: HTTP 200 -> azure-openai-responses/gpt-6-luna "pong" (790 ms)
+azure-openai-responses/gpt-6-sol: HTTP 200 -> azure-openai-responses/gpt-6-sol "pong" (1150 ms)
+azure-openai-responses/DeepSeek-V4-Pro: HTTP 200 -> azure-openai-responses/DeepSeek-V4-Pro "pong" (3410 ms)
+azure-openai-responses/DeepSeek-V4.1-Flash: HTTP 200 -> azure-openai-responses/DeepSeek-V4.1-Flash "pong" (2284 ms)
+azure-openai-responses/grok-4.7: HTTP 200 -> azure-openai-responses/grok-4.7 "pong" (1231 ms)
+azure-completitions/MAI-Thinking-1: HTTP 502 error MODEL llm-pi-ai: no credential for provider route "azure-completitions"; its profile resolves <r (11 ms)
+anthropic/claude-opus-5-5: HTTP 200 -> anthropic/claude-opus-5-5 "pong" (1317 ms)
+anthropic/claude-sonnet-5-5: HTTP 200 -> anthropic/claude-sonnet-5-5 "pong" (951 ms)
+anthropic/claude-haiku-5-5: HTTP 200 -> anthropic/claude-haiku-5-5 "pong" (782 ms)
