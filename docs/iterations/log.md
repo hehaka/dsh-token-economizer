@@ -5,3 +5,4 @@
 - it3 T3: done, commit ed1d4f9, fix rounds 0; T3: live-proxy 26/26 re-run by orchestrator, no production defect
 - it4 T4: done, commit 9262f92, fix rounds 0; T4: PTC defect confirmed live (core denied a tool used through run_code), fixed in spool.mjs; live-ptc 19/19 re-run, npm test 161/0
 - it5 T6: done, commit e1f66b7, fix rounds 0
+- it6 T7: done, commit 3ac4c43, fix rounds 0

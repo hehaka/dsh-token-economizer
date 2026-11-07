@@ -8,13 +8,26 @@
 - DoD: docs/dod.md, frozen sha256 29ef905b325fe55bb641acaec6703f78a0e97bc23751ee39e75130de9a1d5f2c
 - iteration: 6 / 14
 - subagent calls: 6 / 140
-- last commit: e1f66b7
-- open iteration: 6, item T7, fix rounds 0, started at e1f66b7
+- last commit: 3ac4c43
+- open iteration: none
 - goal: goal-4ef63029-44d6-4e4b-8a8c-9990ca83f071, active
 
 ## DoD
 | id | verification | status | evidence | iteration |
 |---|---|---|---|---|
+| D1 | command | pass | exit 0: 24/24 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-multi-models | 6 |
+| D2 | command | pass | exit 0: 9/9 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-multi-resume | 6 |
+| D3 | command | pass | exit 0: 26/26 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-proxy | 6 |
+| D4 | command | pass | exit 0: 19/19 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-ptc | 6 |
+| D5 | command | fail | exit 1: Node.js v22.23.2 | 6 |
+| D6 | command | pass | exit 0: 20/20 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-route | 6 |
+| D7 | command | pass | exit 0: no output | 6 |
+| D8 | command | pass | exit 0: ...............................................................          [100%] | 6 |
+| D9 | command | pass | exit 0: changed lines in upstream files: 46 (budget 60) | 6 |
+| D10 | command | pass | exit 0: no output | 6 |
+| D11 | descriptive | not checked | excluded from exit; human review | 6 |
+
+RESULT: FAIL (1 of 10 command criteria failed) (iteration 6, report docs/iterations/6-dod.md)
 
 ## Backlog
 | id | kind | priority | serves | deps | status | iteration | commit | scope |
@@ -25,7 +38,7 @@
 | T4 | behaviour | must | D4,D6,D7,D8 | T1 | done | 4 | 9262f92 | plan T4: live-ptc.mjs and fix if needed |
 | T5 | behaviour | must | D5,D6,D7 | T1 | blocked | - | - | plan T5: live-tui.mjs |
 | T6 | other | must | D9,D10 | T2,T3,T4,T5 | done | 5 | e1f66b7 | plan T6: review of production fixes of this run |
-| T7 | other | must | D6,D7,D8,D9,D11 | T6 | open | - | - | plan T7: docs, full tests, budget, push |
+| T7 | other | must | D6,D7,D8,D9,D11 | T6 | done | 6 | 3ac4c43 | plan T7: docs, full tests, budget, push |
 
 ## Blocked
 - T5: this dsh install has no TUI: 'dsh tui' fails with 'profile tui does not exist'; profiles are acp, web, headless, sdk, sdk-minimal (docs/iterations/1-spike.md Q5). Hypotheses: none. Question: Czy D5 (TUI na żywo) ma zostać usunięte z DoD jako niewykonalne w tym środowisku, czy mam zainstalować społecznościowy pakiet TUI z npm (poza planem)?
@@ -36,6 +49,7 @@
 - it3 T3: done, commit ed1d4f9, fix rounds 0; T3: live-proxy 26/26 re-run by orchestrator, no production defect
 - it4 T4: done, commit 9262f92, fix rounds 0; T4: PTC defect confirmed live (core denied a tool used through run_code), fixed in spool.mjs; live-ptc 19/19 re-run, npm test 161/0
 - it5 T6: done, commit e1f66b7, fix rounds 0
+- it6 T7: done, commit 3ac4c43, fix rounds 0
 
 ## Last 10 decisions (all: docs/iterations/decisions.md)
 - it1: T1 outcome: T2, T3, T4 go ahead with the spike's recipes; T5 (TUI) is blocked. Why: docs/iterations/1-spike.md: Q1 two sessions on different models in one dsh web is possible (UI pick + HTTP RPC session/create, session/selectModel, session/prompt); Q2 resume = --session-id with an agent-default-model overlay; Q3 dsh-tool-search overlay gives tool_search/tool_call; Q4 PTC = tools entry config mode ptc, nested bash is NOT in the spool (only run_code), Q5 this dsh install has no TUI profile (dsh tui: profile tui does not exist), so D5 cannot be met here and the DoD is frozen.

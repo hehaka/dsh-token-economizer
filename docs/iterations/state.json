@@ -10,13 +10,7 @@
  "budget": 140,
  "calls": 6,
  "iteration": 6,
- "open": {
-  "k": 6,
-  "item": "T7",
-  "fix_rounds": 0,
-  "start": "e1f66b7",
-  "notes": []
- },
+ "open": null,
  "items": [
   {
    "id": "T1",
@@ -154,21 +148,89 @@
    "deps": [
     "T6"
    ],
-   "status": "open",
-   "iteration": null,
-   "commit": null,
+   "status": "done",
+   "iteration": 6,
+   "commit": "3ac4c43",
    "hypotheses": [],
    "block": null
   }
  ],
- "dod": {},
- "dod_result": "",
+ "dod": {
+  "D1": {
+   "verification": "command",
+   "status": "pass",
+   "evidence": "exit 0: 24/24 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-multi-models",
+   "iteration": 6
+  },
+  "D2": {
+   "verification": "command",
+   "status": "pass",
+   "evidence": "exit 0: 9/9 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-multi-resume",
+   "iteration": 6
+  },
+  "D3": {
+   "verification": "command",
+   "status": "pass",
+   "evidence": "exit 0: 26/26 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-proxy",
+   "iteration": 6
+  },
+  "D4": {
+   "verification": "command",
+   "status": "pass",
+   "evidence": "exit 0: 19/19 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-ptc",
+   "iteration": 6
+  },
+  "D5": {
+   "verification": "command",
+   "status": "fail",
+   "evidence": "exit 1: Node.js v22.23.2",
+   "iteration": 6
+  },
+  "D6": {
+   "verification": "command",
+   "status": "pass",
+   "evidence": "exit 0: 20/20 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-route",
+   "iteration": 6
+  },
+  "D7": {
+   "verification": "command",
+   "status": "pass",
+   "evidence": "exit 0: no output",
+   "iteration": 6
+  },
+  "D8": {
+   "verification": "command",
+   "status": "pass",
+   "evidence": "exit 0: ...............................................................          [100%]",
+   "iteration": 6
+  },
+  "D9": {
+   "verification": "command",
+   "status": "pass",
+   "evidence": "exit 0: changed lines in upstream files: 46 (budget 60)",
+   "iteration": 6
+  },
+  "D10": {
+   "verification": "command",
+   "status": "pass",
+   "evidence": "exit 0: no output",
+   "iteration": 6
+  },
+  "D11": {
+   "verification": "descriptive",
+   "status": "not checked",
+   "evidence": "excluded from exit; human review",
+   "iteration": 6
+  }
+ },
+ "dod_result": "RESULT: FAIL (1 of 10 command criteria failed) (iteration 6, report docs/iterations/6-dod.md)",
  "log": [
   "it1 T1: done, commit 4217a8c, fix rounds 0",
   "it2 T2: done, commit 7df5354, fix rounds 0; T2: live-multisession models 24/24 (orchestrator re-run), resume 9/9, npm test 153/0",
   "it3 T3: done, commit ed1d4f9, fix rounds 0; T3: live-proxy 26/26 re-run by orchestrator, no production defect",
   "it4 T4: done, commit 9262f92, fix rounds 0; T4: PTC defect confirmed live (core denied a tool used through run_code), fixed in spool.mjs; live-ptc 19/19 re-run, npm test 161/0",
-  "it5 T6: done, commit e1f66b7, fix rounds 0"
+  "it5 T6: done, commit e1f66b7, fix rounds 0",
+  "it6 T7: done, commit 3ac4c43, fix rounds 0"
  ],
  "decisions": [
   {
@@ -209,7 +271,8 @@
   "phase": "active",
   "audit": null
  },
- "last_commit": "e1f66b7",
- "last_item": "T6",
- "needs_dod": true
+ "last_commit": "3ac4c43",
+ "last_item": "T7",
+ "needs_dod": false,
+ "dod_check_head": "3ac4c43"
 }
