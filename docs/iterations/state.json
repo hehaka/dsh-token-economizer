@@ -8,9 +8,15 @@
  "base": "9b892dd",
  "max_iterations": 18,
  "budget": 180,
- "calls": 17,
- "iteration": 7,
- "open": null,
+ "calls": 22,
+ "iteration": 8,
+ "open": {
+  "k": 8,
+  "item": "T8",
+  "fix_rounds": 0,
+  "start": "349884f",
+  "notes": []
+ },
  "items": [
   {
    "id": "T1",
@@ -340,6 +346,12 @@
    "iteration": 7,
    "what": "T6: real defect found live and fixed (deny list never applied on dsh web)",
    "why": "on the web profile model tools live on the agent plane, tools.schemas() global view returned only working_directory, so applyDeny dropped every name and catalog.json was tiny; fix = schemas(agent). Regression tests first (2, mutation-checked). Open question for T8 review: restrict throws for scope-local names, one bad name fails the whole batch (caught + logged, nothing restricted)",
+   "rejected": ""
+  },
+  {
+   "iteration": 8,
+   "what": "T8 triage: fix both Blockers and all 3 Majors; fix the cheap Minors; defer/reject the rest with reasons",
+   "why": "two independent reviews (sol: endpoint security/robustness, mai: pruning/accounting). Blocker 1 per-session route (cost guarantee; dsh web hosts many sessions in one process) was deferred earlier as out of plan, but the review shows it breaks the written 'never a model other than the session's' purpose, so it moves into scope: hook env carries the session id, the request names it, the plugin keeps a route per session, fallback to last route only when no session is named. Blocker 2 symlink on endpoint file: fix (unlink + O_EXCL, 0600). Majors: restrict per-name fallback and run_code filtered; readDeny walks up to the repo root; cross-repo catalog - investigate a minimal fix, else reject with evidence. Minors fixed: slow body timeout, UTF-8 byte limit, provider text redaction, MODEL not pausing on message text, corrupt catalog repair, panel paused for any non-null, deny shape validation",
    "rejected": ""
   }
  ],

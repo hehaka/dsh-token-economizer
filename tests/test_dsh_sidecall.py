@@ -105,6 +105,17 @@ def test_paid_model_is_passed_on_to_name_the_route(fake):
     assert fake.requests[0]["body"]["model"] == "anthropic/claude-haiku-5-5"
 
 
+def test_the_session_of_the_hook_is_sent_so_the_plugin_picks_its_route(fake, monkeypatch):
+    dsh_sidecall.call("q", env=dict(fake.env, TE_DSH_SESSION="session-A"))
+    assert fake.requests[0]["body"] == {"prompt": "q", "model": None, "session": "session-A"}
+    monkeypatch.setenv(dsh_sidecall.ENV_FILE, fake.file)                 # the process's own environment
+    monkeypatch.setenv("TE_DSH_SESSION", "session-B")
+    dsh_sidecall.Runner(paid_model="p/m")("q")
+    assert fake.requests[1]["body"] == {"prompt": "q", "model": "p/m", "session": "session-B"}
+    dsh_sidecall.call("q", env=dict(fake.env, TE_DSH_SESSION=""))        # empty is absent
+    assert "session" not in fake.requests[2]["body"]
+
+
 def test_a_reply_without_usage_has_text_and_no_effective_tokens(fake):
     fake.reply = (200, {"text": "ok", "model": "m"})
     assert dsh_sidecall.call("q", env=fake.env) == ("ok", None)
@@ -181,6 +192,35 @@ def test_a_provider_that_refuses_the_account_pauses_the_hosts_side_calls(fake, s
     pause = sidecall.paused("dsh", state)
     assert pause and "not signed in" in pause["reason"]
     assert sidecall.call_name("dsh") == "DSH's model service"             # what the notice names
+
+
+@pytest.mark.parametrize("message", [
+    "the user is not signed in", "Please run /login", "To authenticate, visit the console",
+    "you are not logged in"])
+def test_only_the_providers_refusal_pauses_never_a_message_that_says_so(fake, state, message):
+    """The contract: pause for code AUTH (the provider's 401/403) and nothing else; what a message
+    says does not matter (a model's own error text can say anything)."""
+    for status, code in ((502, "MODEL"), (401, "TE_AUTH"), (504, "TIMEOUT"), (503, "NO_LLM"), (409, "NO_ROUTE")):
+        fake.reply = (status, {"error": {"code": code, "message": message}})
+        assert dsh_sidecall.call("q", env=fake.env) == ("", None)
+        assert sidecall.paused("dsh", state) is None, code
+    log = errors(state)
+    assert log.count("sidecall dsh: no reply") == 5 and message in log      # each left its one line, text intact
+    fake.reply = (502, {"error": {"code": "AUTH", "status": 403, "message": message}})
+    assert dsh_sidecall.call("q", env=fake.env) == ("", None)
+    assert sidecall.paused("dsh", state)                                    # AUTH, and only AUTH, pauses
+    assert sidecall.resume("dsh", state)
+    fake.reply = (502, {"error": {"code": "AUTH", "message": "no status given"}})
+    dsh_sidecall.call("q", env=fake.env)
+    assert sidecall.paused("dsh", state)
+
+
+@pytest.mark.parametrize("prompt", [object(), b"bytes", {"a": {1, 2}}])
+def test_a_prompt_that_cannot_be_serialised_is_no_answer_with_one_log_line(fake, state, prompt):
+    assert dsh_sidecall.call(prompt, env=fake.env) == ("", None)           # not a TypeError
+    assert fake.requests == []
+    assert errors(state).count("sidecall dsh: no reply") == 1
+    assert sidecall.paused("dsh", state) is None
 
 
 def test_an_empty_answer_is_no_answer_but_still_costs_what_its_usage_says(fake, state):

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { request } from 'node:http';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -122,7 +122,7 @@ test('the refusal of the account keeps the provider\'s status and nothing else o
 async function endpoint(over = {}) {
   const stateRoot = join(tmp(), 'state');
   const llm = over.llm ?? fakeLlm();
-  const sc = createSidecall({ llm: () => llm, route: () => ('route' in over ? over.route : ROUTE), stateRoot, timeoutMs: over.timeoutMs, log: () => {} });
+  const sc = createSidecall({ llm: () => llm, route: (session) => (over.routeFor ? over.routeFor(session) : ('route' in over ? over.route : ROUTE)), stateRoot, timeoutMs: over.timeoutMs, log: () => {} });
   await sc.start();
   const post = (body, { token = sc.token, host, path = '/v1/complete', method = 'POST', raw } = {}) =>
     new Promise((resolve, reject) => {
@@ -159,6 +159,38 @@ test('the endpoint file is owner-only, names the port and the token, and goes wi
   assert.equal(existsSync(file), false);
 });
 
+test('a symlink planted at the endpoint path is replaced, never followed: its target is left alone (F2)', async () => {
+  const stateRoot = join(tmp(), 'state');
+  const victim = join(tmp(), 'victim.txt');
+  writeFileSync(victim, 'precious\n');
+  chmodSync(victim, 0o644);
+  mkdirSync(join(stateRoot, 'hosts', 'dsh'), { recursive: true });
+  symlinkSync(victim, endpointPath(stateRoot));
+  const sc = createSidecall({ llm: () => fakeLlm(), route: () => ROUTE, stateRoot, log: () => {} });
+  const file = await sc.start();
+  assert.equal(file, endpointPath(stateRoot));
+  assert.equal(readFileSync(victim, 'utf8'), 'precious\n', 'the target was not overwritten');
+  assert.equal(statSync(victim).mode & 0o777, 0o644);
+  const st = lstatSync(file);
+  assert.ok(st.isFile() && !st.isSymbolicLink(), 'a regular file now');
+  assert.equal(st.mode & 0o777, 0o600);
+  assert.equal(JSON.parse(readFileSync(file, 'utf8')).token, sc.token);
+  await sc.stop();
+});
+
+test('an endpoint directory that is itself a symlink is not written through (F2)', async () => {
+  const stateRoot = join(tmp(), 'state');
+  const elsewhere = tmp();
+  mkdirSync(join(stateRoot, 'hosts'), { recursive: true });
+  symlinkSync(elsewhere, join(stateRoot, 'hosts', 'dsh'));
+  const lines = [];
+  const sc = createSidecall({ llm: () => fakeLlm(), route: () => ROUTE, stateRoot, log: (l, m) => lines.push(m) });
+  assert.equal(await sc.start(), undefined, 'not published');
+  assert.deepEqual(readdirSync(elsewhere), [], 'nothing was written into the link\'s target');
+  assert.ok(lines.some((m) => /not published/.test(m)));
+  await sc.stop();
+});
+
 test('only a caller with the token, on loopback\'s own host name, gets in', async () => {
   const e = await endpoint();
   assert.equal((await e.post({ prompt: 'q' }, { token: 'wrong' })).status, 401);
@@ -182,6 +214,34 @@ test('bad requests are refused before any model call', async () => {
   const huge = await e.post(undefined, { raw: JSON.stringify({ prompt: 'x'.repeat(MAX_BODY_BYTES) }) });
   assert.equal(huge.status, 413);
   assert.equal(e.llm.seen.prepared.length, 0);
+  await e.stop();
+});
+
+test('a provider failure message that echoes the token or the prompt is scrubbed before it leaves (F5)', async () => {
+  const prompt = 'Summarise the repository secret plan: delete all branches tonight';
+  const excerpt = prompt.slice(14, 14 + 26);
+  const lines = [];
+  const stateRoot = join(tmp(), 'state');
+  for (const status of [400, 401]) {                                        // a plain failure (MODEL) and a refusal (AUTH)
+    let sc;
+    const llm = fakeLlm({ chunks: () => [{ type: 'finish', reason: { kind: 'error', failure: { message: `upstream said: bad request ${sc.token} while handling "${prompt}" and also ${excerpt} end`, code: 'X', status } } }] });
+    sc = createSidecall({ llm: () => llm, route: () => ROUTE, stateRoot, log: (l, m) => lines.push(m) });
+    await sc.start();
+    const r = await fetch(`http://127.0.0.1:${sc.port}/v1/complete`, { method: 'POST', headers: { Authorization: `Bearer ${sc.token}` }, body: JSON.stringify({ prompt }) });
+    const wire = await r.text();
+    const doc = JSON.parse(wire);
+    assert.equal(doc.error.code, status === 401 ? 'AUTH' : 'MODEL');
+    assert.ok(!wire.includes(sc.token), 'the token is not in the reply');
+    assert.ok(!wire.includes(prompt), 'the prompt is not in the reply');
+    for (let i = 0; i + 20 <= prompt.length; i += 1) assert.ok(!wire.includes(prompt.slice(i, i + 20)), `a 20-char run of the prompt (${i}) is not in the reply`);
+    assert.match(doc.error.message, /^upstream said: bad request /);          // the rest of the message is still there
+    await sc.stop();
+  }
+  assert.ok(!lines.join('\n').includes(prompt));
+  // a long message is cut to 300 characters, whatever it says
+  const long = fakeLlm({ chunks: [{ type: 'finish', reason: { kind: 'error', failure: { message: 'x'.repeat(5000), status: 500 } } }] });
+  const e = await endpoint({ llm: long });
+  assert.ok((await e.post({ prompt })).doc.error.message.length <= 300);
   await e.stop();
 });
 
@@ -219,6 +279,53 @@ test('a call that outlives its deadline is cut off with TIMEOUT, and its model c
   assert.equal(r.status, 504);
   assert.equal(r.doc.error.code, 'TIMEOUT');
   assert.equal(llm.seen.options[0].signal.aborted, true);
+  await e.stop();
+});
+
+test('a half-sent request body does not hold a slot past the deadline (F3)', async () => {
+  const llm = fakeLlm();
+  const e = await endpoint({ llm, timeoutMs: 180 });
+  const partial = () => {
+    const req = request({ host: '127.0.0.1', port: e.sc.port, path: '/v1/complete', method: 'POST', headers: { Authorization: `Bearer ${e.sc.token}`, 'Content-Type': 'application/json', 'Content-Length': 500 } });
+    req.on('error', () => {});
+    req.on('response', (res) => res.resume());
+    req.write('{"prompt": "never fini');                                  // the rest never comes
+    return req;
+  };
+  const halves = [partial(), partial()];
+  try {
+    await new Promise((r) => setTimeout(r, 60));
+    assert.equal((await e.post({ prompt: 'q' })).status, 429, 'while they hold the slots a third call is refused');
+    await new Promise((r) => setTimeout(r, 200));                         // 260 ms in, past the 180 ms deadline
+    const r = await e.post({ prompt: 'q' });
+    assert.equal(r.status, 200, `not BUSY: ${JSON.stringify(r.doc)}`);
+    assert.equal(llm.seen.prepared.length, 1, 'only the real call reached the model');
+  } finally {
+    for (const h of halves) h.destroy();
+    await e.stop();
+  }
+});
+
+test('the body limit counts bytes, not string length: a chunked 4-byte-emoji body over it is refused (F4)', async () => {
+  const llm = fakeLlm();
+  const e = await endpoint({ llm });
+  const emoji = '\u{1F600}'.repeat(400_000);                              // 1.6 MB as UTF-8, 800 000 UTF-16 units
+  const body = Buffer.from(JSON.stringify({ prompt: 'q', pad: emoji }));
+  assert.ok(body.length > MAX_BODY_BYTES && body.toString('utf8').length < MAX_BODY_BYTES);
+  const r = await new Promise((resolve, reject) => {
+    const req = request({ host: '127.0.0.1', port: e.sc.port, path: '/v1/complete', method: 'POST', headers: { Authorization: `Bearer ${e.sc.token}`, 'Content-Type': 'application/json', 'Transfer-Encoding': 'chunked' } }, (res) => {
+      let out = '';
+      res.setEncoding('utf8');
+      res.on('data', (d) => (out += d));
+      res.on('end', () => resolve({ status: res.statusCode, doc: JSON.parse(out) }));
+    });
+    req.on('error', (err) => setTimeout(() => reject(err), 50));          // an early reply may reset the upload
+    for (let i = 0; i < body.length; i += 65_536) req.write(body.subarray(i, i + 65_536));
+    req.end();
+  });
+  assert.equal(r.status, 413);
+  assert.equal(r.doc.error.code, 'TOO_LARGE');
+  assert.equal(llm.seen.prepared.length, 0, 'no model call');
   await e.stop();
 });
 
@@ -339,8 +446,8 @@ test('the route a call runs on follows the session: its agent, then its requests
 
 // The route before the first request (docs/iterations/3-spike.md): `session/created` (the SessionStart
 // hook) comes before `agent/created`, which carries the creation-time route in `agent.options`.
-const callEndpoint = async (p) => {
-  const r = await fetch(`http://127.0.0.1:${p.sidecall.port}/v1/complete`, { method: 'POST', headers: { Authorization: `Bearer ${p.sidecall.token}` }, body: JSON.stringify({ prompt: 'q' }) });
+const callEndpoint = async (p, session) => {
+  const r = await fetch(`http://127.0.0.1:${p.sidecall.port}/v1/complete`, { method: 'POST', headers: { Authorization: `Bearer ${p.sidecall.token}` }, body: JSON.stringify(session === undefined ? { prompt: 'q' } : { prompt: 'q', session }) });
   return { status: r.status, doc: await r.json() };
 };
 const agentOf = (session, options) => ({ agent: { session, options, ctx: { tools: { restrict() {} } } } });
@@ -390,6 +497,101 @@ test('a subagent\'s agent/created, with a route of its own, does not change the 
   await ctx.handlers['agent/created'][0](agentOf(subSession('c2', repo), { provider: 'sub', model: 'sub-model' }));
   assert.equal((await callEndpoint(p)).status, 200);
   assert.deepEqual(lastRoute(llm), ['pa', 'ma'], 'the root agent\'s route stands');
+  await p.stop();
+});
+
+// ---- one process, several sessions (F1): a call runs on the route of the session it names --------
+test('the endpoint hands the NAMED session to the route lookup', async () => {
+  const table = { A: { provider: 'pa', model: 'ma' }, B: { provider: 'pb', model: 'mb' } };
+  const llm = fakeLlm();
+  const e = await endpoint({ llm, routeFor: (s) => (s === undefined ? { provider: 'last', model: 'last' } : table[s]) });
+  const at = (session) => e.post(session === undefined ? { prompt: 'q' } : { prompt: 'q', session });
+  const ran = () => [llm.seen.prepared.at(-1).provider, llm.seen.prepared.at(-1).model];
+  assert.equal((await at('A')).status, 200);
+  assert.deepEqual(ran(), ['pa', 'ma']);
+  assert.equal((await at('B')).status, 200);
+  assert.deepEqual(ran(), ['pb', 'mb']);
+  assert.equal((await at(undefined)).status, 200);
+  assert.deepEqual(ran(), ['last', 'last'], 'a request that names no session gets the last observed route');
+  const before = llm.seen.prepared.length;
+  const unknown = await at('nobody');
+  assert.deepEqual([unknown.status, unknown.doc.error.code], [409, 'NO_ROUTE']);
+  assert.equal(llm.seen.prepared.length, before, 'no model call for a session without a route');
+  for (const bad of [5, {}, [], true]) assert.equal((await e.post({ prompt: 'q', session: bad })).doc.error.code, 'BAD_REQUEST');
+  assert.equal(llm.seen.prepared.length, before);
+  await e.stop();
+});
+
+test('with two sessions on different models, a call naming a session runs on that session\'s route', async () => {
+  const llm = fakeLlm();
+  const { ctx, p, repo } = plugin({ llm });
+  const a = rootSession('sA', repo);
+  const b = rootSession('sB', repo);
+  ctx.handlers['session/created'][0](a);
+  ctx.handlers['session/created'][0](b);
+  await p.idle();
+  await ctx.handlers['agent/created'][0](agentOf(a, { provider: 'pa', model: 'ma' }));
+  await ctx.handlers['agent/created'][0](agentOf(b, { provider: 'pb', model: 'mb' }));
+  assert.equal((await callEndpoint(p, 'sA')).status, 200);
+  assert.deepEqual(lastRoute(llm), ['pa', 'ma'], 'B was observed last, but the call names A');
+  assert.equal((await callEndpoint(p, 'sB')).status, 200);
+  assert.deepEqual(lastRoute(llm), ['pb', 'mb']);
+  ctx.handlers['session/event'][0](a, { type: 'request/context', seq: 1, time: 0, data: { provider: 'pa2', model: 'ma2', contextWindow: 1 } });
+  await callEndpoint(p, 'sB');
+  assert.deepEqual(lastRoute(llm), ['pb', 'mb'], 'a request of A does not move B');
+  await callEndpoint(p, 'sA');
+  assert.deepEqual(lastRoute(llm), ['pa2', 'ma2']);
+  await callEndpoint(p);
+  assert.deepEqual(lastRoute(llm), ['pa2', 'ma2'], 'no session named: the last route observed, as before');
+  const before = llm.seen.prepared.length;
+  const unknown = await callEndpoint(p, 'sC');
+  assert.deepEqual([unknown.status, unknown.doc.error.code], [409, 'NO_ROUTE']);
+  assert.equal(llm.seen.prepared.length, before, 'never another session\'s model');
+  await p.stop();
+});
+
+test('a subagent never sets a route, not even its own', async () => {
+  const llm = fakeLlm();
+  const { ctx, p, repo } = plugin({ llm });
+  const root = rootSession('sA', repo);
+  ctx.handlers['session/created'][0](root);
+  await p.idle();
+  const sub = subSession('c1', repo);
+  await ctx.handlers['agent/created'][0](agentOf(sub, { provider: 'sub', model: 'sub-model' }));
+  ctx.handlers['session/event'][0](sub, { type: 'request/context', seq: 1, time: 0, data: { provider: 'sub', model: 'sub-model', contextWindow: 1 } });
+  assert.equal((await callEndpoint(p, 'c1')).doc.error.code, 'NO_ROUTE');
+  assert.equal((await callEndpoint(p)).doc.error.code, 'NO_ROUTE');
+  await ctx.handlers['agent/created'][0](agentOf(root, { provider: 'pa', model: 'ma' }));
+  assert.equal((await callEndpoint(p)).status, 200);
+  assert.deepEqual(lastRoute(llm), ['pa', 'ma']);
+  await p.stop();
+});
+
+test('the routes kept are bounded: above 64 sessions the oldest is forgotten', async () => {
+  const llm = fakeLlm();
+  const { ctx, p, repo } = plugin({ llm });
+  ctx.handlers['session/created'][0](rootSession('s0', repo));
+  await p.idle();
+  for (let i = 0; i < 70; i += 1) await ctx.handlers['agent/created'][0](agentOf(rootSession(`s${i}`, repo), { provider: `p${i}`, model: `m${i}` }));
+  assert.equal((await callEndpoint(p, 's0')).status, 409);
+  assert.equal((await callEndpoint(p, 's5')).status, 409);
+  assert.equal((await callEndpoint(p, 's6')).status, 200);
+  assert.deepEqual(lastRoute(llm), ['p6', 'm6']);
+  assert.equal((await callEndpoint(p, 's69')).status, 200);
+  await p.stop();
+});
+
+test('every hook\'s environment carries the id of the session it runs for', async () => {
+  const root = tmp();
+  const repo = fakeRepo(root);
+  const bootstrap = join(root, 'fake_core.py');
+  writeFileSync(bootstrap, 'import json, os, sys\nsys.stdin.read()\nprint(json.dumps({"additionalContext": os.environ.get("TE_DSH_SESSION", "")}))\n');
+  const ctx = fakeCtx();
+  const p = createPlugin(ctx, { env: isolatedEnv(root), bootstrap, closeOnExit: false, llm: fakeLlm() });
+  ctx.handlers['session/created'][0](rootSession('sA', repo));
+  ctx.handlers['session/created'][0](rootSession('sB', repo));
+  await p.idle();
+  assert.deepEqual([...p.states.values()].map((s) => s.facts), [['sA'], ['sB']]);
   await p.stop();
 });
 

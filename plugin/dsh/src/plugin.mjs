@@ -18,7 +18,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { disabled, findBootstrap, runHook } from './bridge.mjs';
 import { runTe } from './command.mjs';
-import { ENV_FILE, createSidecall } from './sidecall.mjs';
+import { ENV_FILE, ENV_SESSION, createSidecall } from './sidecall.mjs';
 import { Spool, parseArgs, spoolPath, textOf } from './spool.mjs';
 import { applyDeny, readDeny, toolNames, writeCatalog } from './tools.mjs';
 
@@ -75,11 +75,22 @@ export function createPlugin(ctx, options) {
   const bootstrap = config.bootstrap ?? findBootstrap(import.meta.url);
   // The core's own model calls (judge, proposer) are answered here, through DSH's model service.
   // The route they run on is the session's: what the agent was created with, then what its
-  // requests logged (`request/context`).
-  let route;
-  const observeRoute = (r) => {
-    if (typeof r?.provider === 'string' && r.provider && typeof r?.model === 'string' && r.model) route = { provider: r.provider, model: r.model };
+  // requests logged (`request/context`). One process can host several sessions on different
+  // models (`dsh web`), so a route is kept per session id and a call names its session
+  // (`TE_DSH_SESSION` on the hook's environment); a call that names none (an older client) gets
+  // the last route observed. The map is bounded: the oldest session is dropped above MAX_ROUTES.
+  const MAX_ROUTES = 64;
+  const routes = new Map();
+  let lastRoute;
+  const observeRoute = (r, sessionId) => {
+    if (!(typeof r?.provider === 'string' && r.provider && typeof r?.model === 'string' && r.model)) return;
+    lastRoute = { provider: r.provider, model: r.model };
+    if (!sessionId) return;
+    routes.delete(sessionId);                              // re-inserted: the newest
+    routes.set(sessionId, lastRoute);
+    while (routes.size > MAX_ROUTES) routes.delete(routes.keys().next().value);
   };
+  const routeOf = (sessionId) => (sessionId === undefined ? lastRoute : routes.get(sessionId));
   // `ctx.llm` and `ctx.tools` are services: reading one without `ctx.inject` throws. They are
   // taken when they appear (a plain `inject` on the plugin would hold all of it back instead).
   const services = {};
@@ -103,12 +114,12 @@ export function createPlugin(ctx, options) {
       log('warn', `${name} service unavailable: ${err?.message ?? err}`);
     }
   }
-  const sidecall = config.sidecall === false ? undefined : createSidecall({ llm: () => config.llm ?? service('llm'), route: () => route, stateRoot, log });
-  const hookEnv = () => (sidecall?.file ? { ...env, [ENV_FILE]: sidecall.file } : env);
+  const sidecall = config.sidecall === false ? undefined : createSidecall({ llm: () => config.llm ?? service('llm'), route: routeOf, stateRoot, log });
+  const hookEnv = (sessionId) => (sidecall?.file ? { ...env, [ENV_FILE]: sidecall.file, ...(sessionId ? { [ENV_SESSION]: String(sessionId) } : {}) } : env);
   let run = config.run;
   if (!run) {
     if (!bootstrap) log('warn', 'the TokenEconomizer launcher (scripts/te_bootstrap.py) was not found: no hook will run');
-    run = (payload, cwd) => runHook(payload, { env: hookEnv(), bootstrap, cwd });
+    run = (payload, cwd) => runHook(payload, { env: hookEnv(payload?.session_id), bootstrap, cwd });
   }
 
   const states = new Map();
@@ -194,7 +205,7 @@ export function createPlugin(ctx, options) {
     try {
       const session = agent?.session;
       if (!session || !isRoot(session)) return;
-      observeRoute(agent.options);
+      observeRoute(agent.options, sessionKey(session));
       const known = toolNames(service('tools'), agent);
       writeCatalog(stateRoot, known);
       if (config.applyDeny === false) return;
@@ -228,7 +239,7 @@ export function createPlugin(ctx, options) {
     try {
       const st = stateFor(session);
       if (!st) return;
-      if (event?.type === 'request/context') observeRoute(event.data);
+      if (event?.type === 'request/context') observeRoute(event.data, st.key);
       ensureStarted(st);
       const rec = st.spool.record(event);
       if (rec?.kind !== 'prompt') return;

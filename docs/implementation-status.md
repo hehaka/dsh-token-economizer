@@ -6,10 +6,10 @@
 - instruction: -
 - base commit: 9b892dd
 - DoD: docs/dod.md, frozen sha256 b763c64898e3d5cbaa2b97b53ff6daee318ab08bcb3f8dbd7590d1acd405b0d9
-- iteration: 7 / 18
-- subagent calls: 17 / 180
+- iteration: 8 / 18
+- subagent calls: 22 / 180
 - last commit: f2c2d59
-- open iteration: none
+- open iteration: 8, item T8, fix rounds 0, started at 349884f
 - goal: goal-cd2e4c05-0c18-4e76-ab00-084d5e002fb9, active
 
 ## DoD
@@ -57,7 +57,6 @@ RESULT: FAIL (1 of 12 command criteria failed) (iteration 7, report docs/iterati
 - it7 T6: done, commit f2c2d59, fix rounds 0; T6: browser-check strict CLI + --prune scenario; defect fix in tools.mjs/plugin.mjs; orchestrator re-ran npm test 124/0
 
 ## Last 10 decisions (all: docs/iterations/decisions.md)
-- it0: no instruction file. Why: plan has none, repo has no docs/development-instruction.md; repo CLAUDE.md conventions and gates (pytest tests experiments/tests, npm test) apply; commit messages in repo style, no push until End (user asked to push earlier work, final push at End needs the 'cannot decide' rule: push was already authorised in this session for this branch).
 - it1: D5/D13 pass vacuously today. Why: browser-check.mjs ignores unknown flags, so --prune/--only panel run the old 4 checks and pass; T6 must make unknown flags exit 2 and --prune/--only select real new checks, so the DoD commands are meaningful.
 - it2: T3 TDD skipped. Why: the deliverable is itself a live test script; its red state is D2 failing now (script missing, exit 1); a model-free test of a script that needs a real model adds nothing. Treated as one implementer call plus the Node/Python tests for the small plugin change (provider in the reply).
 - it2: T3 review: Major accepted, Minor accepted. Why: Major: reproducible hook-timeout hazard with slower models (gpt-6-luna is a reasoning model); fix = one variant per hook process (claimed atomically per variant), live script asks for three separate bash calls and Stop/SessionEnd drain leftovers. A detached background job is rejected because the endpoint dies when headless dsh exits. Minor: redact credential-like tokens and truncate printed errors.. Rejected: detached job; raising the bridge timeout (production code, not for a test).
@@ -67,6 +66,7 @@ RESULT: FAIL (1 of 12 command criteria failed) (iteration 7, report docs/iterati
 - it3: T4 not reviewed by a second model. Why: production code unchanged; only characterization tests and a live script, validated by mutation checks (isRoot guard, observeRoute(agent.options)) and live runs; the final T8 review covers the whole diff.
 - it6: T7 review: both Minors deferred. Why: malformed pause files are hardening outside the item description (the core itself writes sidecall.json with {at, reason}); severity rule says Minor -> defer. The 'secret visible in the reason' note is raised again in the T8 review.
 - it7: T6: real defect found live and fixed (deny list never applied on dsh web). Why: on the web profile model tools live on the agent plane, tools.schemas() global view returned only working_directory, so applyDeny dropped every name and catalog.json was tiny; fix = schemas(agent). Regression tests first (2, mutation-checked). Open question for T8 review: restrict throws for scope-local names, one bad name fails the whole batch (caught + logged, nothing restricted).
+- it8: T8 triage: fix both Blockers and all 3 Majors; fix the cheap Minors; defer/reject the rest with reasons. Why: two independent reviews (sol: endpoint security/robustness, mai: pruning/accounting). Blocker 1 per-session route (cost guarantee; dsh web hosts many sessions in one process) was deferred earlier as out of plan, but the review shows it breaks the written 'never a model other than the session's' purpose, so it moves into scope: hook env carries the session id, the request names it, the plugin keeps a route per session, fallback to last route only when no session is named. Blocker 2 symlink on endpoint file: fix (unlink + O_EXCL, 0600). Majors: restrict per-name fallback and run_code filtered; readDeny walks up to the repo root; cross-repo catalog - investigate a minimal fix, else reject with evidence. Minors fixed: slow body timeout, UTF-8 byte limit, provider text redaction, MODEL not pausing on message text, corrupt catalog repair, panel paused for any non-null, deny shape validation.
 
 ## Deferred
 - T3: live-sidecall redactor also masks the key cache_creation_input_tokens in printed replies (cosmetic)
