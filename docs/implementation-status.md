@@ -8,28 +8,28 @@
 - DoD: docs/dod.md, frozen sha256 b763c64898e3d5cbaa2b97b53ff6daee318ab08bcb3f8dbd7590d1acd405b0d9
 - iteration: 6 / 18
 - subagent calls: 15 / 180
-- last commit: 22afdb9
-- open iteration: 6, item T7, fix rounds 0, started at 1ab4a67
+- last commit: 1b7e8ba
+- open iteration: none
 - goal: goal-cd2e4c05-0c18-4e76-ab00-084d5e002fb9, active
 
 ## DoD
 | id | verification | status | evidence | iteration |
 |---|---|---|---|---|
-| D1 | command | pass | exit 0: 15/15 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-prune | 5 |
-| D2 | command | pass | exit 0: 13/13 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sidecall | 5 |
-| D3 | command | pass | exit 0: 7/7 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-route | 5 |
-| D4 | command | pass | exit 0: 34/34 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sessions-sigterm | 5 |
-| D5 | command | pass | exit 0: 4/4 checks passed | 5 |
-| D6 | command | pass | exit 0: no output | 5 |
-| D7 | command | fail | exit 1: no output | 5 |
-| D8 | command | pass | exit 0: 25/25 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live | 5 |
-| D9 | command | pass | exit 0: ............................                                             [100%] | 5 |
-| D10 | command | pass | exit 0: changed lines in upstream files: 32 (budget 60) | 5 |
-| D11 | descriptive | not checked | excluded from exit; human review | 5 |
-| D12 | command | fail | exit 1: .............                                                            [100%] | 5 |
-| D13 | command | pass | exit 0: 4/4 checks passed | 5 |
+| D1 | command | pass | exit 0: 15/15 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-prune | 6 |
+| D2 | command | pass | exit 0: 13/13 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sidecall | 6 |
+| D3 | command | pass | exit 0: 7/7 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-route | 6 |
+| D4 | command | pass | exit 0: 34/34 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live-sessions-sigterm | 6 |
+| D5 | command | pass | exit 0: 4/4 checks passed | 6 |
+| D6 | command | pass | exit 0: no output | 6 |
+| D7 | command | fail | exit 1: no output | 6 |
+| D8 | command | pass | exit 0: 25/25 passed. Work directory: /var/folders/jq/7dpgx9ln3pb1zv_xg8m6dshr0000gn/T/te-dsh-live | 6 |
+| D9 | command | pass | exit 0: .....................................                                    [100%] | 6 |
+| D10 | command | pass | exit 0: changed lines in upstream files: 32 (budget 60) | 6 |
+| D11 | descriptive | not checked | excluded from exit; human review | 6 |
+| D12 | command | pass | exit 0: ......................                                                   [100%] | 6 |
+| D13 | command | pass | exit 0: 4/4 checks passed | 6 |
 
-RESULT: FAIL (2 of 12 command criteria failed) (iteration 5, report docs/iterations/5-dod.md)
+RESULT: FAIL (1 of 12 command criteria failed) (iteration 6, report docs/iterations/6-dod.md)
 
 ## Backlog
 | id | kind | priority | serves | deps | status | iteration | commit | scope |
@@ -39,7 +39,7 @@ RESULT: FAIL (2 of 12 command criteria failed) (iteration 5, report docs/iterati
 | T4 | behaviour | must | D3,D6,D9 | T3 | done | 3 | 5fbb1b0 | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T4: route before first request (probe, observeRoute, --only route, tests) |
 | T2 | behaviour | must | D1,D9 | T1 | done | 4 | d2263dd | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T2: live-prune-loop.mjs |
 | T5 | behaviour | must | D4,D6,D9 | T1 | done | 5 | 22afdb9 | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T5: live-sessions.mjs (subagent, concurrent, SIGTERM sweep) + fixes/tests |
-| T7 | behaviour | must | D6,D12,D13,D9 | - | open | - | - | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T7: panel.py side key, client model/view rows, model.test.mjs text |
+| T7 | behaviour | must | D6,D12,D13,D9 | - | done | 6 | 1b7e8ba | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T7: panel.py side key, client model/view rows, model.test.mjs text |
 | T6 | behaviour | must | D5,D13 | T7,T1 | open | - | - | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T6: browser-check.mjs --prune [--only panel] |
 | T8 | other | must | D7,D6,D9,D10 | T2,T3,T4,T5,T6,T7 | open | - | - | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T8: code review report docs/reviews/2026-11-07-dsh-prune-sidecall.md + fixes |
 | T9 | other | must | D8,D9,D10,D11 | T8 | open | - | - | docs/plans/2026-11-07-dsh-domkniecie-weryfikacji-i-panel.md §Taski T9: ADR 0004, README, spike notes, budget, full tests |
@@ -53,6 +53,7 @@ RESULT: FAIL (2 of 12 command criteria failed) (iteration 5, report docs/iterati
 - it3 T4: done, commit 5fbb1b0, fix rounds 0; T4 implemented by sonnet (tests + live route group, production code unchanged); orchestrator re-ran npm test 105/0 and live-sidecall --only route 7/7
 - it4 T2: done, commit d2263dd, fix rounds 0; T2: live-prune-loop 15/15 re-run by orchestrator; mutation (applyDeny always off) -> 2 FAIL; review deferred to T8
 - it5 T5: done, commit 22afdb9, fix rounds 0; T5: live-sessions 34/34 re-run by orchestrator; no production defect
+- it6 T7: done, commit 1b7e8ba, fix rounds 0
 
 ## Last 10 decisions (all: docs/iterations/decisions.md)
 - it0: D7 command fixed before freeze. Why: the plan's D7 grep pattern with \\\| escapes matched everything (empty ERE alternative), so D7 could never pass; replaced by an awk check of severity/disposition columns, tested on open-high, fixed-high and missing file. Rejected: keeping the plan wording.
