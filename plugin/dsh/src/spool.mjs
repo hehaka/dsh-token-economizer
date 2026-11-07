@@ -83,6 +83,8 @@ export class Spool {
     this.parent = null;
     this.n = 0;
     this.ready = false;
+    this.lastCall = 'ptc'; // the latest tool call id: the base of an id made up for a nested call
+    this.nested = new Set(); // ids given to nested calls, so a repeated dispatch is not recorded twice
   }
 
   #write(row) {
@@ -146,6 +148,7 @@ export class Spool {
       const msg = { role: 'assistant', content: assistantBlocks(m.content), model: m.source?.model };
       const usage = toPiUsage(d.usage);
       if (usage) msg.usage = usage;
+      for (const b of msg.content) if (b.type === 'toolCall' && b.id) this.lastCall = String(b.id);
       this.#add(msg);
       return { kind: 'assistant' };
     }
@@ -159,6 +162,30 @@ export class Spool {
       });
       return { kind: 'tool-result' };
     }
+    if (event.type === 'tool/ptc-dispatch') return this.#nestedCall(d);
     return null;
+  }
+
+  // A `run_code` (mode ptc) calls other tools from code; DSH logs each finished one as
+  // `tool/ptc-dispatch` and no `tool/call`/`tool/result`. Record it as its own call of that tool,
+  // between the `run_code` row and that call's result, so the core counts the tool as used.
+  #nestedCall(d) {
+    if (typeof d.name !== 'string' || !d.name) return null;
+    let id = typeof d.subCallId === 'string' ? d.subCallId : '';
+    if (id && this.nested.has(id)) return null; // the same dispatch again
+    // No subCallId: made up as '<call>:ptc:s<n>', which cannot equal a real '<call>:ptc:<n>'.
+    for (let n = this.nested.size + 1; !id; n += 1) {
+      if (!this.nested.has(`${this.lastCall}:ptc:s${n}`)) id = `${this.lastCall}:ptc:s${n}`;
+    }
+    this.nested.add(id);
+    const call = unproxy(d.name, parseArgs(d.arguments));
+    this.#add({ role: 'assistant', content: [{ type: 'toolCall', id, name: call.name, arguments: call.arguments }] });
+    this.#add({
+      role: 'toolResult',
+      toolCallId: id,
+      isError: Boolean(d.isError),
+      content: [{ type: 'text', text: clip(textOf(d.content)) }],
+    });
+    return { kind: 'ptc-call' };
   }
 }

@@ -6,10 +6,10 @@
 - instruction: repo CLAUDE.md
 - base commit: 0bce3df
 - DoD: docs/dod.md, frozen sha256 29ef905b325fe55bb641acaec6703f78a0e97bc23751ee39e75130de9a1d5f2c
-- iteration: 3 / 14
-- subagent calls: 3 / 140
-- last commit: 7df5354
-- open iteration: 3, item T3, fix rounds 0, started at 7df5354
+- iteration: 4 / 14
+- subagent calls: 4 / 140
+- last commit: ed1d4f9
+- open iteration: 4, item T4, fix rounds 0, started at ed1d4f9
 - goal: goal-4ef63029-44d6-4e4b-8a8c-9990ca83f071, active
 
 ## DoD
@@ -21,7 +21,7 @@
 |---|---|---|---|---|---|---|---|---|
 | T1 | other | must | D1,D2,D3,D4,D5 | - | done | 1 | 4217a8c | plan T1: feasibility spike for two models/proxy/PTC/TUI/resume |
 | T2 | behaviour | must | D1,D2,D6,D7 | T1 | done | 2 | 7df5354 | plan T2: live-multisession.mjs models/resume |
-| T3 | behaviour | must | D3,D6,D7 | T1 | open | - | - | plan T3: live-proxy.mjs |
+| T3 | behaviour | must | D3,D6,D7 | T1 | done | 3 | ed1d4f9 | plan T3: live-proxy.mjs |
 | T4 | behaviour | must | D4,D6,D7,D8 | T1 | open | - | - | plan T4: live-ptc.mjs and fix if needed |
 | T5 | behaviour | must | D5,D6,D7 | T1 | blocked | - | - | plan T5: live-tui.mjs |
 | T6 | other | must | D9,D10 | T2,T3,T4,T5 | open | - | - | plan T6: review of production fixes of this run |
@@ -33,12 +33,15 @@
 ## Last 10 iterations (full log: docs/iterations/log.md)
 - it1 T1: done, commit 4217a8c, fix rounds 0
 - it2 T2: done, commit 7df5354, fix rounds 0; T2: live-multisession models 24/24 (orchestrator re-run), resume 9/9, npm test 153/0
+- it3 T3: done, commit ed1d4f9, fix rounds 0; T3: live-proxy 26/26 re-run by orchestrator, no production defect
 
 ## Last 10 decisions (all: docs/iterations/decisions.md)
 - it1: T1 outcome: T2, T3, T4 go ahead with the spike's recipes; T5 (TUI) is blocked. Why: docs/iterations/1-spike.md: Q1 two sessions on different models in one dsh web is possible (UI pick + HTTP RPC session/create, session/selectModel, session/prompt); Q2 resume = --session-id with an agent-default-model overlay; Q3 dsh-tool-search overlay gives tool_search/tool_call; Q4 PTC = tools entry config mode ptc, nested bash is NOT in the spool (only run_code), Q5 this dsh install has no TUI profile (dsh tui: profile tui does not exist), so D5 cannot be met here and the DoD is frozen.
 - it1: Watch item for T2: before a web session's first request the route is agent.options (profile default), not the model chosen by session/selectModel. Why: spike Q1: endpoint reply for B said haiku after selectModel(sonnet) until the first request. T2 measures it, and fixes it only if DSH emits an event carrying the selection; otherwise it is documented as a limit (the call runs on the default model, never on another session's).
 - it1: T4 fix direction for PTC: the spool must not make a tool used from run_code look unused. Why: spike Q4: spool has only the run_code block, but PostToolUse reached the plugin for the nested bash first; the core would see an MCP tool used only through the SDK as never used and propose denying it.
+- it4: T4: test 7 of spool-ptc.test.mjs corrected to [true,true,true]. Why: the test (written by us in step 2a) mis-read the core's claude_calls tuple: field 4 is success (not is_error), verified in tokeneconomizer/trace/claude.py; every call in that fixture succeeded. Not a weakened guard: the test was wrong, and the assertion keeps its strength.
 
 ## Deferred
 - known limit: in dsh web, after session/selectModel and before the session's first request the endpoint answers a call for that session on the profile default model (agent.options), not on the selected model; never another session's route (live-multisession (f)). Fix needs a DSH event carrying the selection; not found in the spike
 - tool_call to an unknown tool: dsh-tool-search answers {ok:false} with isError false, so the spool records a phantom successful call under that name (harmless: not in the catalog, never in deny)
+- PTC: nested results are recorded, content capped by RESULT_CAP; a dispatch without subCallId gets a synthesized id (review in T6)

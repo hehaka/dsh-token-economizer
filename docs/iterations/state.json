@@ -8,15 +8,15 @@
  "base": "0bce3df",
  "max_iterations": 14,
  "budget": 140,
- "calls": 3,
- "iteration": 3,
+ "calls": 4,
+ "iteration": 4,
  "open": {
-  "k": 3,
-  "item": "T3",
+  "k": 4,
+  "item": "T4",
   "fix_rounds": 0,
-  "start": "7df5354",
+  "start": "ed1d4f9",
   "notes": [
-   "T3: live-proxy 26/26 re-run by orchestrator, no production defect"
+   "T4: PTC defect confirmed live (core denied a tool used through run_code), fixed in spool.mjs; live-ptc 19/19 re-run, npm test 161/0"
   ]
  },
  "items": [
@@ -72,9 +72,9 @@
    "deps": [
     "T1"
    ],
-   "status": "open",
-   "iteration": null,
-   "commit": null,
+   "status": "done",
+   "iteration": 3,
+   "commit": "ed1d4f9",
    "hypotheses": [],
    "block": null
   },
@@ -167,7 +167,8 @@
  "dod_result": "",
  "log": [
   "it1 T1: done, commit 4217a8c, fix rounds 0",
-  "it2 T2: done, commit 7df5354, fix rounds 0; T2: live-multisession models 24/24 (orchestrator re-run), resume 9/9, npm test 153/0"
+  "it2 T2: done, commit 7df5354, fix rounds 0; T2: live-multisession models 24/24 (orchestrator re-run), resume 9/9, npm test 153/0",
+  "it3 T3: done, commit ed1d4f9, fix rounds 0; T3: live-proxy 26/26 re-run by orchestrator, no production defect"
  ],
  "decisions": [
   {
@@ -187,11 +188,18 @@
    "what": "T4 fix direction for PTC: the spool must not make a tool used from run_code look unused",
    "why": "spike Q4: spool has only the run_code block, but PostToolUse reached the plugin for the nested bash first; the core would see an MCP tool used only through the SDK as never used and propose denying it",
    "rejected": ""
+  },
+  {
+   "iteration": 4,
+   "what": "T4: test 7 of spool-ptc.test.mjs corrected to [true,true,true]",
+   "why": "the test (written by us in step 2a) mis-read the core's claude_calls tuple: field 4 is success (not is_error), verified in tokeneconomizer/trace/claude.py; every call in that fixture succeeded. Not a weakened guard: the test was wrong, and the assertion keeps its strength",
+   "rejected": ""
   }
  ],
  "deferred": [
   "known limit: in dsh web, after session/selectModel and before the session's first request the endpoint answers a call for that session on the profile default model (agent.options), not on the selected model; never another session's route (live-multisession (f)). Fix needs a DSH event carrying the selection; not found in the spike",
-  "tool_call to an unknown tool: dsh-tool-search answers {ok:false} with isError false, so the spool records a phantom successful call under that name (harmless: not in the catalog, never in deny)"
+  "tool_call to an unknown tool: dsh-tool-search answers {ok:false} with isError false, so the spool records a phantom successful call under that name (harmless: not in the catalog, never in deny)",
+  "PTC: nested results are recorded, content capped by RESULT_CAP; a dispatch without subCallId gets a synthesized id (review in T6)"
  ],
  "stop": "",
  "goal": {
@@ -200,7 +208,7 @@
   "phase": "active",
   "audit": null
  },
- "last_commit": "7df5354",
- "last_item": "T2",
+ "last_commit": "ed1d4f9",
+ "last_item": "T3",
  "needs_dod": true
 }
