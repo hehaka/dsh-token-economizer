@@ -13,56 +13,22 @@
 // whatever MCP servers the chosen profile starts, as any `dsh headless` run does.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { homedir, tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { readLog } from './zstd-log.mjs';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import {
+  HERE, arg, dsh as runDsh, fakeGitRepo, flag, jsonl, loadProfileEnv, makeChecker, overlay as makeOverlay,
+  prepareWork, readSessionEvents, requestTools, sessionLogFile, tail,
+} from './common.mjs';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const REPO = join(HERE, '..', '..', '..', '..');
-const arg = (n, d) => (process.argv.includes(n) ? process.argv[process.argv.indexOf(n) + 1] : d);
 const profile = arg('--profile', 'headless');
-const dumpOnly = process.argv.includes('--dump-only');
-const work = join(tmpdir(), 'te-dsh-live');
-const checks = [];
-const check = (name, ok, detail = '') => {
-  checks.push({ name, ok });
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`);
-};
-const tail = (t) => String(t || '').split('\n').filter((l) => /dsh:|Error|error/.test(l)).slice(-5).join('\n');
-// Model behaviour is reported, not graded: a model may decline to echo a code from an automated
-// note (one did, live), which says nothing about whether the plugin delivered it.
-const info = (name, ok) => console.log(`INFO  ${name}: ${ok ? 'yes' : 'no'}`);
-const jsonl = (f) => (existsSync(f) ? readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
+const dumpOnly = flag('--dump-only');
+const { check, info, summary } = makeChecker();
 
-// DSH reads `.env` from the directory it runs in; this check runs in a temp repository, so the
-// profile's own `.env` (the credential its models name) is loaded here and inherited by the dsh
-// processes. Values are never printed or copied.
-const envFile = join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'profiles', profile, '.env');
-if (existsSync(envFile)) process.loadEnvFile(envFile);
-else console.log(`note: no ${envFile}; relying on the ambient environment for credentials`);
-
-rmSync(work, { recursive: true, force: true });
-mkdirSync(work, { recursive: true });
-const pkg = join(work, 'pkg');
-const b = spawnSync('python3', [join(REPO, 'scripts', 'build_dsh_plugin.py'), '--out', pkg], { encoding: 'utf8' });
-if (b.status !== 0) throw new Error(`build failed: ${b.stderr}`);
-const entry = pathToFileURL(join(pkg, 'index.mjs')).href;
-
-function overlay(name, config) {
-  const file = join(work, `${name}.patch.yml`);
-  const cfg = Object.entries(config).map(([k, v]) => `        ${k}: ${JSON.stringify(v)}`).join('\n');
-  const block = cfg ? `      config:\n${cfg}\n` : '';
-  writeFileSync(file, `- insert:\n    - id: te-live\n      name: ${JSON.stringify(entry)}\n${block}`);
-  return file;
-}
-const dsh = (args, env, timeout) =>
-  spawnSync('dsh', args, { encoding: 'utf8', timeout, env: { ...process.env, ...env }, cwd: join(work, 'repo') });
-
-const repo = join(work, 'repo');
-mkdirSync(join(repo, '.git', 'info'), { recursive: true });
-writeFileSync(join(repo, '.git', 'HEAD'), 'ref: refs/heads/main\n');
-writeFileSync(join(repo, '.git', 'config'), '[remote "origin"]\n\turl = https://github.com/acme/widget.git\n');
+loadProfileEnv(profile);
+const { work, pkg, entry } = prepareWork('te-dsh-live');
+const overlay = (name, config) => makeOverlay(work, entry, name, config);
+const dsh = (args, env, timeout) => runDsh(work, args, env, timeout);
+const repo = fakeGitRepo(join(work, 'repo'));
 
 const stub = join(pkg, 'test-stub-core.py');
 writeFileSync(stub, readFileSync(join(HERE, 'stub_core.py')));
@@ -103,10 +69,8 @@ if (spool && existsSync(spool)) {
 // What DSH itself recorded (deterministic, unlike the model's answer): the session log holds the
 // facts inside the runtime-context message and the note as a next-step inbox message.
 const sid = spool && /session-[0-9a-f-]+/.exec(spool)?.[0];
-const sessionsRoot = join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'sessions');
-const logFile1 = sid && existsSync(sessionsRoot)
-  ? readdirSync(sessionsRoot).map((d) => join(sessionsRoot, d, sid, 'session.v4.jsonl.zstd')).find(existsSync) : undefined;
-const events = logFile1 ? readLog(logFile1) : [];
+const logFile1 = sessionLogFile(sid);
+const events = readSessionEvents(sid);
 const spliced = events.find((e) => e.type === 'agent/inbox/spliced' && JSON.stringify(e).includes('TE-LIVE-REDIRECT-91bc'));
 check('DSH recorded the facts in the model-facing context', events.some((e) => e.type === 'user/message' && e.data?.source?.kind === 'runtime-context' && JSON.stringify(e).includes('TE-LIVE-FACTS-7f3a')), logFile1 ? `${events.length} events` : 'session log not found');
 check('DSH queued the post-tool context for the next step', Boolean(spliced) && spliced.data?.target === 'next-step', spliced ? `target ${spliced.data.target}` : 'no inbox event');
@@ -156,17 +120,11 @@ check('/te toolprune show answers on dsh', ran['/te toolprune show']?.kind === '
 check('/te refuses the core\'s background commands', ran['/te fold --session x']?.kind === 'error' && /Unknown command/.test(ran['/te fold --session x']?.text ?? ''));
 
 // -- 5. tool pruning: the deny list hides a tool from the model's request ----------------------
-const sessionTools = (sessionId) => {
-  const root = join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'sessions');
-  const f = existsSync(root) ? readdirSync(root).map((d) => join(root, d, sessionId, 'session.v4.jsonl.zstd')).find(existsSync) : undefined;
-  const header = f ? readLog(f).find((e) => e.type === 'request/header') : undefined;
-  return header?.data?.header?.tools?.map((t) => t.name);
-};
 const catalogFile = join(state2, 'hosts', 'dsh', 'catalog.json');
 const catalog = existsSync(catalogFile) ? JSON.parse(readFileSync(catalogFile, 'utf8')).tools : [];
 check('the plugin recorded the tool list DSH offers (catalog.json)', Array.isArray(catalog) && catalog.length > 5 && catalog.includes('bash'), `${catalog.length} tools`);
 const spoolOf = (state) => readdirSync(join(state, 'dsh-sessions')).map((n) => n.replace(/\.jsonl$/, ''));
-const base = spoolOf(state2).map(sessionTools).find(Boolean) ?? [];
+const base = spoolOf(state2).map(requestTools).find(Boolean) ?? [];
 const victim = ['read_image', 'present', 'send_message', 'glob'].find((n) => base.includes(n) && catalog.includes(n));
 check('a request\'s tool list is readable from the session log, to compare', base.length > 0 && Boolean(victim), `${base.length} tools in the request; victim ${victim}`);
 if (victim) {
@@ -175,11 +133,9 @@ if (victim) {
   const state4 = join(work, 'state4');
   const r4 = dsh(['--profile', profile, '--patch', patch2, 'Reply with the single word ok'], env(state4), 240_000);
   check('the run with a deny list finished (an unknown name did not break it)', r4.status === 0, `exit ${r4.status}`);
-  const denied = existsSync(join(state4, 'dsh-sessions')) ? spoolOf(state4).map(sessionTools).find(Boolean) ?? [] : [];
+  const denied = existsSync(join(state4, 'dsh-sessions')) ? spoolOf(state4).map(requestTools).find(Boolean) ?? [] : [];
   check('the denied tool is gone from the model\'s request, the others stay', denied.length > 0 && !denied.includes(victim) && denied.includes('bash'), `${denied.length} tools (baseline ${base.length})`);
   rmSync(join(repo, '.dsh'), { recursive: true, force: true });
 }
 
-const failed = checks.filter((c) => !c.ok).length;
-console.log(`\n${checks.length - failed}/${checks.length} passed. Work directory: ${work}`);
-process.exit(failed ? 1 : 0);
+process.exit(summary(work) ? 1 : 0);
