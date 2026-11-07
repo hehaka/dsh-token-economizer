@@ -142,9 +142,12 @@ ROUTE_HOOKS = ("SessionStart", "UserPromptSubmit", "PostToolUse")
 
 def route_call(hook):
     """TE_LIVE_ROUTE: the real runner on the session's own route, once per hook name per run; the row
-    says what came back and what a mechanism would charge for it (`pricing.runner_effective_or_approx`)."""
+    says what came back and what a mechanism would charge for it (`pricing.runner_effective_or_approx`).
+    `endpoint_file` is the TE_DSH_SIDECALL_FILE this hook process was given (None when it had none), so a
+    script running several dsh processes at once can tell whose endpoint each row went to."""
     prompt = "Reply with the single word: pong"
-    row = {"phase": hook, "text": "", "effective": None, "charge": 0, "reply": None}
+    row = {"phase": hook, "text": "", "effective": None, "charge": 0, "reply": None,
+           "endpoint_file": os.environ.get("TE_DSH_SIDECALL_FILE")}
     if not _claim(hook, "route"):
         return
     try:

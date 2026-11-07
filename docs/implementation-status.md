@@ -6,10 +6,10 @@
 - instruction: -
 - base commit: 9b892dd
 - DoD: docs/dod.md, frozen sha256 b763c64898e3d5cbaa2b97b53ff6daee318ab08bcb3f8dbd7590d1acd405b0d9
-- iteration: 4 / 18
-- subagent calls: 10 / 180
+- iteration: 5 / 18
+- subagent calls: 12 / 180
 - last commit: d2263dd
-- open iteration: none
+- open iteration: 5, item T5, fix rounds 0, started at 02c1f59
 - goal: goal-cd2e4c05-0c18-4e76-ab00-084d5e002fb9, active
 
 ## DoD

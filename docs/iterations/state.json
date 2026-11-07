@@ -8,9 +8,17 @@
  "base": "9b892dd",
  "max_iterations": 18,
  "budget": 180,
- "calls": 10,
- "iteration": 4,
- "open": null,
+ "calls": 12,
+ "iteration": 5,
+ "open": {
+  "k": 5,
+  "item": "T5",
+  "fix_rounds": 0,
+  "start": "02c1f59",
+  "notes": [
+   "T5: live-sessions 34/34 re-run by orchestrator; no production defect"
+  ]
+ },
  "items": [
   {
    "id": "T1",

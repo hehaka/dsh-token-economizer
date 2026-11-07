@@ -69,7 +69,7 @@ async function setup(opts) {
 }
 
 /** Run `stub_core.py hook --host dsh` as the plugin does: the payload on stdin. Never rejects. */
-function hook(s, payload, { runner = true, paid = VARIANTS, route = false } = {}) {
+function hook(s, payload, { runner = true, paid = VARIANTS, route = false, endpointEnv = true } = {}) {
   const env = {
     PATH: process.env.PATH ?? '',
     HOME: s.dir,
@@ -78,8 +78,8 @@ function hook(s, payload, { runner = true, paid = VARIANTS, route = false } = {}
     TE_LIVE_SIDE: s.side,
     TE_LIVE_REPO: REPO,
     TE_LIVE_PAID: JSON.stringify(paid),
-    TE_DSH_SIDECALL_FILE: s.endpointFile,
   };
+  if (endpointEnv) env.TE_DSH_SIDECALL_FILE = s.endpointFile;
   if (runner && !route) env.TE_LIVE_RUNNER = '1';
   if (route) env.TE_LIVE_ROUTE = '1';
   return new Promise((resolve) => {
@@ -219,7 +219,7 @@ test('TE_LIVE_ROUTE: one row per hook name (SessionStart, UserPromptSubmit, Post
   assert.deepEqual(phases(s), ['SessionStart', 'UserPromptSubmit', 'PostToolUse'], 'no further row');
   assert.equal(s.fake.requests.length, 3, 'no further request');
   for (const row of rows(s)) {
-    assert.deepEqual(Object.keys(row).sort(), ['charge', 'effective', 'phase', 'reply', 'text']);
+    assert.deepEqual(Object.keys(row).sort(), ['charge', 'effective', 'endpoint_file', 'phase', 'reply', 'text']);
     assert.equal(row.text, 'pong');
     assert.deepEqual(row.reply, REPLY);
     assert.ok(row.effective > 0 && row.charge === row.effective, 'a call that reported its usage is charged that usage');
@@ -229,6 +229,20 @@ test('TE_LIVE_ROUTE: one row per hook name (SessionStart, UserPromptSubmit, Post
     assert.equal(req.body.prompt, 'Reply with the single word: pong');
   }
   assert.ok(existsSync(`${s.side}.route.SessionStart`), 'the marker is <TE_LIVE_SIDE>.route.<hook name>');
+}));
+
+test('TE_LIVE_ROUTE: every row carries endpoint_file, the TE_DSH_SIDECALL_FILE the hook process had (null without one)', () => withSetup({}, async (s) => {
+  for (const p of [start, prompt, post]) assert.equal((await hook(s, p, { route: true })).code, 0);
+  assert.equal(rows(s).length, 3);
+  for (const row of rows(s)) assert.equal(row.endpoint_file, s.endpointFile, `${row.phase}: the file the plugin named`);
+  const bare = await setup({});                                      // a hook process that was given no endpoint file
+  try {
+    assert.equal((await hook(bare, post, { route: true, endpointEnv: false })).code, 0);
+    const [row] = rows(bare);
+    assert.equal(row.phase, 'PostToolUse');
+    assert.equal(row.endpoint_file, null);
+    assert.equal(bare.fake.requests.length, 0, 'no endpoint file, no request');
+  } finally { await bare.fake.close(); }
 }));
 
 test('TE_LIVE_ROUTE: other hooks make no call, and the hooks keep answering their notes', () => withSetup({}, async (s) => {

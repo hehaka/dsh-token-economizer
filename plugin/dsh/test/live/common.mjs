@@ -2,7 +2,7 @@
 // Each script runs a real `dsh headless` against a real model; this module holds the setup
 // they have in common: CLI parsing, PASS/FAIL reporting, profile `.env`, package build,
 // the `--patch` overlay, the dsh process, and reading DSH's own session log.
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -89,7 +89,7 @@ export const dsh = (work, args, env, timeout, cwd = join(work, 'repo')) =>
   spawnSync('dsh', args, { encoding: 'utf8', timeout, env: { ...process.env, ...env }, cwd });
 
 // -- DSH's own session log -------------------------------------------------------------------
-const sessionsRoot = () => join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'sessions');
+export const sessionsRoot = () => join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'sessions');
 
 // Path of a session's zstd log, or undefined when it is not (yet) on disk.
 export function sessionLogFile(sessionId) {
@@ -109,4 +109,71 @@ export function readSessionEvents(sessionId) {
 export function requestTools(sessionId) {
   const header = readSessionEvents(sessionId).find((e) => e.type === 'request/header');
   return header?.data?.header?.tools?.map((t) => t.name);
+}
+
+// -- generic helpers for scripts that run several dsh processes (live-sessions.mjs) ----------------
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Polls `fn` every `stepMs` until it returns something truthy (returned) or `timeoutMs` passes (undefined). */
+export async function waitFor(fn, timeoutMs, stepMs = 100) {
+  const t0 = Date.now();
+  for (;;) {
+    const v = fn();
+    if (v) return v;
+    if (Date.now() - t0 >= timeoutMs) return undefined;
+    await sleep(stepMs);
+  }
+}
+
+/**
+ * Starts `dsh` without waiting for it (spawn, as runDsh is spawnSync). Returns `{ child, pid, done }`;
+ * `done` resolves to `{ status, signal, stdout, stderr, timedOut }` once the process has closed. A process
+ * still running after `timeoutMs` is killed with SIGKILL (`timedOut: true`).
+ */
+export function spawnDsh(args, env, cwd, timeoutMs = 300_000) {
+  const child = spawn('dsh', args, { env: { ...process.env, ...env }, cwd, stdio: ['pipe', 'pipe', 'pipe'] });
+  let stdout = '';
+  let stderr = '';
+  let timedOut = false;
+  child.stdout.on('data', (c) => { stdout += c; });
+  child.stderr.on('data', (c) => { stderr += c; });
+  child.stdin.on('error', () => {});
+  child.stdin.end();
+  const timer = setTimeout(() => { timedOut = true; child.kill('SIGKILL'); }, timeoutMs);
+  const done = new Promise((resolve) => {
+    child.on('error', (e) => { clearTimeout(timer); resolve({ status: null, signal: null, stdout, stderr: `${stderr}${e}`, timedOut }); });
+    child.on('close', (status, signal) => { clearTimeout(timer); resolve({ status, signal, stdout, stderr, timedOut }); });
+  });
+  return { child, pid: child.pid, done };
+}
+
+/** Names of the side-call endpoint files (`sidecall.<pid>.endpoint.json`) under `<home>/hosts/dsh`. */
+export function endpointFiles(home) {
+  try {
+    return readdirSync(join(home, 'hosts', 'dsh')).filter((n) => /^sidecall\.\d+\.endpoint\.json$/.test(n)).sort();
+  } catch {
+    return [];
+  }
+}
+
+/** Every session on disk under DSH's sessions root: Map of session id -> log file. */
+export function allSessions() {
+  const root = sessionsRoot();
+  const out = new Map();
+  if (!existsSync(root)) return out;
+  for (const d of readdirSync(root)) {
+    let ids = [];
+    try { ids = readdirSync(join(root, d)); } catch { continue; }
+    for (const id of ids) {
+      const f = join(root, d, id, 'session.v4.jsonl.zstd');
+      if (existsSync(f)) out.set(id, f);
+    }
+  }
+  return out;
+}
+
+/** Ids of the spool files (`<home>/dsh-sessions/<session id>.jsonl`) of a state root: the root sessions it saw. */
+export function spoolIds(home) {
+  const dir = join(home, 'dsh-sessions');
+  return existsSync(dir) ? readdirSync(dir).filter((n) => n.endsWith('.jsonl')).map((n) => n.replace(/\.jsonl$/, '')).sort() : [];
 }
